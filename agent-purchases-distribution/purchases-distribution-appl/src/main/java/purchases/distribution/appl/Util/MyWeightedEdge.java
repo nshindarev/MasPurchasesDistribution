@@ -18,7 +18,6 @@ public class MyWeightedEdge extends DefaultWeightedEdge {
     public Object getSource() {
         return super.getSource();
     }
-
     public Object getTarget() {
         return super.getTarget();
     }
@@ -26,7 +25,6 @@ public class MyWeightedEdge extends DefaultWeightedEdge {
     public final Boolean getUsed() {
         return used;
     }
-
     public final void setUsed(Boolean used) {
         this.used = used;
     }
