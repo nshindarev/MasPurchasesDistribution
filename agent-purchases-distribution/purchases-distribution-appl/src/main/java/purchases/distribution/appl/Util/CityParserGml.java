@@ -1,7 +1,9 @@
 package purchases.distribution.appl.Util;
 
+
 import org.jgrapht.ext.GmlImporter;
 import org.jgrapht.ext.ImportException;
+import org.jgrapht.graph.DefaultWeightedEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +14,8 @@ public class CityParserGml {
     public static final Logger logger = LoggerFactory.getLogger(City.class);
 
     private File cityGmlFile;
-    private City<String, MyWeightedEdge> city;
+    private City<String, MyWeightedEdge> city = new City(DefaultWeightedEdge.class);
+
 
 
     public CityParserGml(File cityGmlFile){
@@ -27,6 +30,7 @@ public class CityParserGml {
         try {
             this.cityGmlFile = new File("purchases-distribution-appl/src/main/resources/small_city.gml");
             logger.info("city downloaded from file: {}", this.cityGmlFile.getName());
+
         }
         catch (Exception ex){
             logger.error(ex.getMessage());
@@ -48,9 +52,14 @@ public class CityParserGml {
 
         try{
             importer.importGraph(this.city, this.cityGmlFile);
+            updateDataPool(this.city);
         }
         catch (ImportException ex){
             logger.error("сломалось при чтении из файла " + cityGmlFile.getPath());
         }
+    }
+    public void updateDataPool(City<String, MyWeightedEdge> city){
+        DataPool.getInstance().setMyCity(city);
+
     }
 }
