@@ -1,5 +1,7 @@
 package purchases.distribution.appl;
 
+import org.jgrapht.alg.FloydWarshallShortestPaths;
+import org.jgrapht.graph.DefaultWeightedEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import purchases.distribution.appl.Util.CityParserGml;
@@ -26,7 +28,9 @@ public class Main {
         CityParserGml parser =  new CityParserGml();
         parser.parseCityFromFile();
 
-        ArrayList<String> s = (ArrayList<String>) DataPool.getInstance().getShortestPath("1", "10");
-        logger.info(s.toString());
+        FloydWarshallShortestPaths<String,  DefaultWeightedEdge> flWar =
+                (FloydWarshallShortestPaths<String,  DefaultWeightedEdge>)DataPool.getInstance(String.class, DefaultWeightedEdge.class).getShortestPaths();
+
+        logger.info(flWar.getShortestPath("1","2").toString());
     }
 }

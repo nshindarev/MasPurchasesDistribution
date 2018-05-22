@@ -1,57 +1,70 @@
 package purchases.distribution.appl.Util;
 
-import org.jgrapht.GraphPath;
-import org.jgrapht.alg.FloydWarshallShortestPaths;
 
-import java.util.LinkedList;
+import org.jgrapht.alg.FloydWarshallShortestPaths;
+import org.jgrapht.graph.DefaultWeightedEdge;
+
 import java.util.List;
 
-public class DataPool<V,E> {
+public class DataPool {
     /**
      *  singleton класс:
      *      - город сохраняется при создании объекта класса DataPool
      *      - есть только один экземпляр DataPool в проекте
      */
 
-    private static DataPool<String,MyWeightedEdge> instance;
-    private DataPool (){
-
+    private static DataPool instance;
+    private DataPool (Class vertex_type, Class edge_type){
+        this.v = vertex_type;
+        this.e = edge_type;
     }
 
-    public static synchronized DataPool<String,MyWeightedEdge> getInstance(){
+    public static synchronized DataPool getInstance(Class vertex_type, Class edge_type){
+
         if (instance == null){
-            instance = new DataPool<String,MyWeightedEdge>();
-            return instance ;
+            instance = new DataPool(vertex_type, edge_type);
         }
-        else return instance;
+
+        return instance;
     }
 
     /**
-     *   myCity - final field
+     * data fields
+     *  - v vertex type
+     *  - e edge type
+     *
      */
 
-    private City<V,E> myCity;
+    private Class<v> v;
+    private Class<e> e;
 
-    public void setMyCity(City<V, E> myCity) {
+    private City<? extends v, ? extends e> myCity;
+
+    public void setMyCity(City<? extends v, ? extends e> myCity) {
         if (this.myCity == null)
             this.myCity = myCity;
     }
-    public City<V,E> getMyCity(){
+    public City<? extends v, ? extends e> getMyCity(){
         return this.myCity;
     }
 
     /**
-     *
      * Shortest paths: Floyd Warshall
      */
-    private FloydWarshallShortestPaths<V, E> allPaths;
-    public FloydWarshallShortestPaths<V, E> getShortestPaths(){
+
+    private FloydWarshallShortestPaths<? extends v, ? extends e> allPaths;
+    public  FloydWarshallShortestPaths<? extends v, ? extends e> getShortestPaths(){
         if (allPaths == null){
             this.allPaths = new FloydWarshallShortestPaths(getMyCity());
         }
         return allPaths;
     }
-    public List<V> getShortestPath(V a, V b){
-       return getShortestPaths().getShortestPath(a, b).getVertexList();
-    }
+
+    /*
+    public List<? extends v> getShortestPath(Object a, Object b){
+       if (v.isInstance(a) && v.isInstance(b)){
+           v.cast(a);
+       }
+       return getShortestPaths().getShortestPath(v.cast(a), v.cast(b)).getVertexList();
+    }*/
 }
