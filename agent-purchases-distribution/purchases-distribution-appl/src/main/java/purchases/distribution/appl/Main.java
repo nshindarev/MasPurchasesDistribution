@@ -29,8 +29,8 @@ public class Main {
         parser.parseCityFromFile();
 
         FloydWarshallShortestPaths<String,  DefaultWeightedEdge> flWar =
-                (FloydWarshallShortestPaths<String,  DefaultWeightedEdge>)DataPool.getInstance(String.class, DefaultWeightedEdge.class).getShortestPaths();
+                (FloydWarshallShortestPaths<String,  DefaultWeightedEdge>)DataPool.getInstance().getShortestPaths();
 
-        logger.info(flWar.getShortestPath("1","2").toString());
+        logger.info(flWar.getShortestPath("1","10").toString());
     }
 }

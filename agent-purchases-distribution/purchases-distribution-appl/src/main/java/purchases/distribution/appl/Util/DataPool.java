@@ -6,7 +6,7 @@ import org.jgrapht.graph.DefaultWeightedEdge;
 
 import java.util.List;
 
-public class DataPool {
+public class DataPool <V,E>{
     /**
      *  singleton класс:
      *      - город сохраняется при создании объекта класса DataPool
@@ -14,15 +14,13 @@ public class DataPool {
      */
 
     private static DataPool instance;
-    private DataPool (Class vertex_type, Class edge_type){
-        this.v = vertex_type;
-        this.e = edge_type;
+    private DataPool(){
     }
 
-    public static synchronized DataPool getInstance(Class vertex_type, Class edge_type){
+    public static synchronized DataPool getInstance(){
 
         if (instance == null){
-            instance = new DataPool(vertex_type, edge_type);
+            instance = new DataPool();
         }
 
         return instance;
@@ -30,21 +28,16 @@ public class DataPool {
 
     /**
      * data fields
-     *  - v vertex type
-     *  - e edge type
-     *
      */
 
-    private Class<v> v;
-    private Class<e> e;
+    private City<String, DefaultWeightedEdge> myCity;
 
-    private City<? extends v, ? extends e> myCity;
-
-    public void setMyCity(City<? extends v, ? extends e> myCity) {
+    public void setMyCity( City<String, DefaultWeightedEdge> myCity) {
         if (this.myCity == null)
             this.myCity = myCity;
     }
-    public City<? extends v, ? extends e> getMyCity(){
+
+    public City<String, DefaultWeightedEdge> getMyCity(){
         return this.myCity;
     }
 
@@ -52,19 +45,16 @@ public class DataPool {
      * Shortest paths: Floyd Warshall
      */
 
-    private FloydWarshallShortestPaths<? extends v, ? extends e> allPaths;
-    public  FloydWarshallShortestPaths<? extends v, ? extends e> getShortestPaths(){
+    private FloydWarshallShortestPaths<String, DefaultWeightedEdge> allPaths;
+    public  FloydWarshallShortestPaths<String, DefaultWeightedEdge> getShortestPaths(){
         if (allPaths == null){
             this.allPaths = new FloydWarshallShortestPaths(getMyCity());
         }
         return allPaths;
     }
 
-    /*
-    public List<? extends v> getShortestPath(Object a, Object b){
-       if (v.isInstance(a) && v.isInstance(b)){
-           v.cast(a);
-       }
-       return getShortestPaths().getShortestPath(v.cast(a), v.cast(b)).getVertexList();
-    }*/
+
+    public List<String> getShortestPath(String a, String b){
+       return getShortestPaths().getShortestPath(a, b).getVertexList();
+    }
 }
