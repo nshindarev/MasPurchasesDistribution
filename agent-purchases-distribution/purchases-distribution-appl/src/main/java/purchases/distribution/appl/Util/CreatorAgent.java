@@ -18,6 +18,8 @@ public class CreatorAgent extends Agent {
         try{
             ContainerController cc = getContainerController();
             AgentController nick   = cc.createNewAgent("nick",   "purchases.distribution.appl.CitizenAgent", new Object[] {});
+
+            nick.start();
         }
         catch (StaleProxyException ex){
             logger.error(ex.getLocalizedMessage());
