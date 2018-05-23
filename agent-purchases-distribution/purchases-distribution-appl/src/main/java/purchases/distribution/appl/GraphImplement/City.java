@@ -1,4 +1,4 @@
-package purchases.distribution.appl.Util;
+package purchases.distribution.appl.GraphImplement;
 
 import org.jgrapht.graph.SimpleWeightedGraph;
 import org.slf4j.Logger;

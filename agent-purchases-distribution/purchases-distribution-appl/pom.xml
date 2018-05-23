@@ -37,5 +37,12 @@
             <groupId>com.tilab.jade</groupId>
             <artifactId>jade</artifactId>
         </dependency>
+        <!-- Тестирование -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- * * * -->
     </dependencies>
 </project>
