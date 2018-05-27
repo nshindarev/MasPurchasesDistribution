@@ -1,6 +1,8 @@
 package UtilTest;
 
 import org.jgrapht.ext.ImportException;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,17 +19,44 @@ import java.util.List;
 
 public class CitizenAgentTest {
     private static final Logger logger = LoggerFactory.getLogger(CitizenAgentTest.class);
+    private CitizenAgent testAgent;
 
-    @Test
-    public void addNewVertexTest() throws IOException {
+    @Before
+    public void setCityForTest()throws IOException {
         String s = new File( "." ).getCanonicalPath();
         logger.info(s);
 
-        CitizenAgent testAgent = new CitizenAgent();
+        try{
+        CityParserGml parser =  new CityParserGml(new File("src/main/resources/small_city.gml"));
+            parser.parseCityFromFile();
+            logger.info("city initialized successfully");
+        }
+        catch (ImportException ex){
+            logger.error(ex.getMessage());
+        }
 
+        this.testAgent = new CitizenAgent();
         testAgent.setCurWay(Arrays.asList("1", "5", "8"));
-        logger.debug("test new way for testAgent");
 
+    }
+
+    @Ignore
+    @Test
+    public void countCurPriceTest(){
+        this.testAgent = new CitizenAgent();
+        testAgent.setCurWay(Arrays.asList("1", "3", "6", "8"));
+
+        logger.debug("test results for countCurPriceTest: ");
+        logger.debug(Double.toString(this.testAgent.countCurWayPrice()));
+
+        logger.trace(Double.toString(this.testAgent.countWayPrice(Arrays.asList("1", "3", "6", "8"))));
+    }
+
+    @Ignore
+    @Test
+    public void addNewVertexTest() {
+
+        logger.debug("test new way for testAgent");
         ArrayList<String> list = new ArrayList<String>() {{
             add("0");
             add("1");
@@ -42,20 +71,37 @@ public class CitizenAgentTest {
         }};
 
         for (String newItemTesting: list){
-            try{
-                CityParserGml parser =  new CityParserGml(new File("src/main/resources/small_city.gml"));
-                parser.parseCityFromFile();
+            List<String> rez = testAgent.getNewWay(newItemTesting);
 
-                List<String> rez = testAgent.getNewWay(newItemTesting);
-
-                logger.trace("test rezult for item: " + newItemTesting);
-                logger.trace(rez.toString());
-
-            }
-            catch (ImportException ex){
-                logger.error("test adding new vertex crashed: cannot load city");
-            }
+            logger.debug("test rezult for item: " + newItemTesting);
+            logger.debug(rez.toString());
         }
+    }
+
+    @Ignore
+    @Test
+    public void testBenefitCounter (){
+        this.testAgent = new CitizenAgent();
+        testAgent.setCurWay(Arrays.asList("1", "3", "6", "8"));
+
+        logger.debug("test results for testBenefitCounter: ");
+        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("1", 100)));
+        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("1", 0)));
+
+        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("11", 0)));
+        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("11", 10)));
+        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("11", 1000)));
+
+    }
+
+    @Test
+    public void checkCyclicPathTest(){
+        this.testAgent = new CitizenAgent();
+        testAgent.setCurWay(Arrays.asList("1", "3", "6", "8"));
+
+        testAgent.checkCyclicWays();
+        logger.debug(testAgent.getOwnWay().toString());
+        logger.debug(testAgent.getCurWay().toString());
     }
 
 }
