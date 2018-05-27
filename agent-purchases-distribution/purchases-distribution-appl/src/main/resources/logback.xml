@@ -17,6 +17,7 @@
     <logger name="purchases.distribution.appl"                     level="trace"   additivity="false"><appender-ref ref="STDOUT"/></logger>
     <logger name="purchases.distribution.appl.Util.CreatorAgent"   level="debug"   additivity="false"><appender-ref ref="STDOUT"/></logger>
     <logger name="UtilTest.CitizenAgentTest"                       level="debug"   additivity="false"><appender-ref ref="STDOUT"/></logger>
+    <logger name="purchases.distribution.appl.CitizenAgent"        level="trace"   additivity="false"><appender-ref ref="STDOUT"/></logger>
 
     <!-- root -->
     <root level="INFO">

@@ -2,21 +2,18 @@ package purchases.distribution.appl;
 
 import jade.core.Agent;
 
-import org.jgrapht.GraphPath;
-
-import org.jgrapht.graph.AsUndirectedGraph;
 import org.slf4j.LoggerFactory;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
-import purchases.distribution.appl.Util.CreatorAgent;
 import purchases.distribution.appl.Util.DataPool;
+import purchases.distribution.appl.Util.Offer;
 
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Logger;
 
 public class CitizenAgent extends Agent {
 
+    public static final org.slf4j.Logger logger = LoggerFactory.getLogger(CitizenAgent.class);
     public CitizenAgent (){
         this.ownWay = new LinkedList<>();
         this.curWay = new LinkedList<>();
@@ -28,16 +25,22 @@ public class CitizenAgent extends Agent {
                 this.curWay.add(str);
             }
         }
+        checkCyclicWays();
     }
 
     /**
-     *  koef = затрата на путь / текущая валюта;
+     *  koef       = затрата на путь / текущая валюта;
+     *  curPayment = сколько зарабатывает на доставке в данный момент;
+     *  goods      = сколько товара имеет на руках;
      */
-    public static final org.slf4j.Logger logger = LoggerFactory.getLogger(CreatorAgent.class);
+    private double curPayment = 0;
     private double koef = DataPool.koef;
+    private int goods;
 
     /**
      *  содержат только необходимые для посещения вершины в определенном порядке
+     *  ownWay  = персональные точки, которые обязательно посещает агент
+     *  curWay  = точки с учетом доставки
      */
     private List<String> ownWay;
     private List<String> curWay;
@@ -63,17 +66,18 @@ public class CitizenAgent extends Agent {
             for(Object obj: args){
                 ownWay.add((String)obj);
             }
-            if (args.length == 1) isDriver = false;
+            if (args.length == 1) {
+                isDriver = false;
+            }
 
             curWay = new LinkedList<>(ownWay);
+            checkCyclicWays();
         }
         else {
             logger.error("args for agents " + getAID().getName() + " set incorrect");
             logger.error("agent " + getAID().getName() + " will be destroyed");
             this.doDelete();
         }
-
-        getNewWay("2");
     }
 
     /**
@@ -111,7 +115,7 @@ public class CitizenAgent extends Agent {
             int minLength = Integer.MAX_VALUE;
             List<String> minWay = new LinkedList<>();
 
-            for(int i = 0; i< this.curWay.size()+1; i++){
+            for(int i = 1; i< this.curWay.size()+1; i++){
                 int length = 0;
 
                 List<String> updWay = new LinkedList<>(this.curWay);
@@ -176,19 +180,41 @@ public class CitizenAgent extends Agent {
 
     /**
      * высчитывает: принимаем мы предложение или нет
-     * @param newNode
-     * @param payment
-     * @return
+     * @param offer предложение
+     * @return true, если предложение выгодное
      */
-    public boolean beneficialOffer (String newNode, double payment){
-        List<String> optimalWay = getNewWay(newNode);
+    public boolean beneficialOffer (Offer offer){
+        List<String> optimalWay = getNewWay(offer.newNode);
 
         double opt = this.countWayPrice(optimalWay);
         double cur = this.countWayPrice(curWay);
 
-        if (this.countWayPrice(optimalWay) - payment*koef < this.countCurWayPrice()){
+        if (this.countWayPrice(optimalWay) - offer.payment*koef < this.countCurWayPrice()){
             return true;
         }
-        else return false;
+        return false;
+    }
+
+    /**
+     * фиксация транзакции о доставке товара
+     * @param offer предложение по доставке
+     */
+    public void approveOffer (Offer offer){
+        if (beneficialOffer(offer)){
+            this.curWay = getNewWay(offer.newNode);
+            this.curPayment += offer.payment;
+            this.goods += 1;
+        }
+    }
+
+    /**
+     * подсчитывает суммарные затраты на дорогу
+     * @return затраты
+     */
+    public double evaluateRezCost(){
+        if (!isDriver){
+            return 0;
+        }
+        return  curPayment*koef - countCurWayPrice();
     }
 }

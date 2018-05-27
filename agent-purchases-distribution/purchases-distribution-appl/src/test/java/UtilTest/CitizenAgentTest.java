@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import purchases.distribution.appl.CitizenAgent;
 import purchases.distribution.appl.Util.CityParserGml;
+import purchases.distribution.appl.Util.GraphVisualize;
+import purchases.distribution.appl.Util.Offer;
 
 
 import java.io.File;
@@ -52,7 +54,6 @@ public class CitizenAgentTest {
         logger.trace(Double.toString(this.testAgent.countWayPrice(Arrays.asList("1", "3", "6", "8"))));
     }
 
-    @Ignore
     @Test
     public void addNewVertexTest() {
 
@@ -85,12 +86,8 @@ public class CitizenAgentTest {
         testAgent.setCurWay(Arrays.asList("1", "3", "6", "8"));
 
         logger.debug("test results for testBenefitCounter: ");
-        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("1", 100)));
-        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("1", 0)));
-
-        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("11", 0)));
-        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("11", 10)));
-        logger.debug(Boolean.toString(this.testAgent.beneficialOffer("11", 1000)));
+        logger.debug(Boolean.toString(this.testAgent.beneficialOffer(new Offer("11", 1000))));
+        logger.debug(Boolean.toString(this.testAgent.beneficialOffer(new Offer("11", 10))));
 
     }
 
@@ -104,4 +101,10 @@ public class CitizenAgentTest {
         logger.debug(testAgent.getCurWay().toString());
     }
 
+    @Ignore
+    @Test
+    public void visualizeTest(){
+        GraphVisualize gv = new GraphVisualize();
+        gv.init();
+    }
 }
