@@ -17,7 +17,7 @@ public class CreatorAgent extends Agent {
 
         try{
             ContainerController cc = getContainerController();
-            AgentController nick   = cc.createNewAgent("nick",   "purchases.distribution.appl.CitizenAgent", new Object[] {});
+            AgentController nick   = cc.createNewAgent("nick",   "purchases.distribution.appl.CitizenAgent", new Object[] {"8", "3", "4"});
 
             nick.start();
         }
