@@ -1,17 +1,11 @@
 package purchases.distribution.appl;
 
-import org.jgrapht.alg.FloydWarshallShortestPaths;
 import org.jgrapht.ext.ImportException;
-import org.jgrapht.graph.DefaultWeightedEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import purchases.distribution.appl.Util.CityParserGml;
-import purchases.distribution.appl.Util.DataPool;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedList;
+import purchases.distribution.appl.Util.CityParserGml;
+
 
 public class Main {
     public static final Logger logger = LoggerFactory.getLogger(Main.class);
