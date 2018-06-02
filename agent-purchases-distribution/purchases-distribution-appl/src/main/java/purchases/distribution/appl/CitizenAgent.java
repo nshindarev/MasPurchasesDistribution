@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 import purchases.distribution.appl.Util.DataPool;
 import purchases.distribution.appl.Util.Offer;
+import purchases.distribution.appl.Util.Status;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -217,4 +218,60 @@ public class CitizenAgent extends Agent {
         }
         return  curPayment*koef - countCurWayPrice();
     }
+
+    private class VertexStatus{
+        List<Status> list;
+        String name;
+
+        VertexStatus (String s){
+            this.name = s;
+            this.list = new LinkedList<>();
+            this.list.add(Status.PLAIN);
+        }
+        VertexStatus (String s, Status initStatus){
+                this.name = s;
+                this.list = new LinkedList<>();
+                this.list.add(initStatus);
+        }
+
+        void addStatus(Status newStatus){
+            switch (newStatus){
+                case MAIN:
+                    if(!list.contains(Status.MAIN)){
+                        list.add(Status.MAIN);
+                        list.add(Status.CURRENT);
+                    }
+                    break;
+                case GET:
+                    if(!list.contains(Status.GET)) list.add(Status.GET);
+                    break;
+                case PLAIN:
+                    if (list.isEmpty()) list.add(Status.PLAIN);
+                    break;
+                case CURRENT:
+                    if (!list.contains(Status.CURRENT)) list.add(Status.CURRENT);
+                    break;
+                case DELIVER:
+                    if (!list.contains(Status.DELIVER)) list.add(Status.DELIVER);
+                    break;
+            }
+        }
+
+        void popStatus(Status removable){
+            if (list != null){
+                if (list.size()>1){
+                    switch (removable){
+                        case DELIVER: case GET:
+                            list.remove(removable);
+                            break;
+                    }
+                }
+                else {
+                    list = new LinkedList<>();
+                    list.add(Status.PLAIN);
+                }
+            }
+        }
+    }
+
 }
