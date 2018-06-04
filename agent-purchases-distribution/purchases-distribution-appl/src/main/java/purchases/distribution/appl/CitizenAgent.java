@@ -7,6 +7,7 @@ import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 import purchases.distribution.appl.Util.DataPool;
 import purchases.distribution.appl.Util.Offer;
 import purchases.distribution.appl.Util.Status;
+import purchases.distribution.appl.Util.VertexStatus;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -15,15 +16,29 @@ import java.util.List;
 public class CitizenAgent extends Agent {
 
     public static final org.slf4j.Logger logger = LoggerFactory.getLogger(CitizenAgent.class);
+
+
+    public CitizenAgent (List<String> mainVertices){
+
+        this.ownWay = new LinkedList<>();
+        this.curWay = new LinkedList<>();
+
+        for(String v: mainVertices){
+            ownWay.add(new VertexStatus(v, Status.MAIN));
+            curWay.add(new VertexStatus(v, Status.CURRENT));
+        }
+    }
     public CitizenAgent (){
         this.ownWay = new LinkedList<>();
         this.curWay = new LinkedList<>();
     }
+
     public void setCurWay(List<String> way){
         if (curWay.size() == 0){
             this.curWay = new LinkedList<>();
             for(String str: way){
-                this.curWay.add(str);
+                VertexStatus st = new VertexStatus(str, Status.CURRENT);
+                this.curWay.add(st);
             }
         }
         checkCyclicWays();
@@ -43,13 +58,13 @@ public class CitizenAgent extends Agent {
      *  ownWay  = персональные точки, которые обязательно посещает агент
      *  curWay  = точки с учетом доставки
      */
-    private List<String> ownWay;
-    private List<String> curWay;
+    private List<VertexStatus> ownWay;
+    private List<VertexStatus> curWay;
 
-    public List<String> getOwnWay(){
+    public List<VertexStatus> getOwnWay(){
         return this.ownWay;
     }
-    public List<String> getCurWay(){
+    public List<VertexStatus> getCurWay(){
         return this.curWay;
     }
 
@@ -65,7 +80,7 @@ public class CitizenAgent extends Agent {
         Object[] args = getArguments();
         if (args.length >= 1) {
             for(Object obj: args){
-                ownWay.add((String)obj);
+                ownWay.add(new VertexStatus((String)obj, Status.MAIN));
             }
             if (args.length == 1) {
                 isDriver = false;
@@ -82,27 +97,41 @@ public class CitizenAgent extends Agent {
     }
 
     /**
+     * проверяет, содержит ли текущий путь вершину name
+     * @param name
+     * @return
+     */
+    private boolean curWayContains (String name){
+        for(VertexStatus status: curWay){
+            if (status.name.equals(name)) return true;
+        }
+        return false;
+    }
+
+    /**
      * маршруты агентов должны быть цикличны:
      * метод предназначен для проверки на совпадение начальной и конечной точек пути
+     * в случае несовпадения маршрут обновляется
      */
     public void checkCyclicWays(){
         if (this.curWay.size() > 0){
 
             // текущий путь с новыми вершинами
-            if (!this.curWay.get(0).
-                    equals(this.curWay.get(this.curWay.size()-1))){
+            if (!this.curWay.get(0).name.
+                    equals(this.curWay.get(this.curWay.size()-1).name)){
                 this.curWay.add(this.curWay.get(0));
             }
         }
         if (this.ownWay.size() > 0){
 
             // собственный маршрут агента
-            if (this.ownWay.get(0).
-                    equals(this.ownWay.get(this.ownWay.size()-1))){
+            if (this.ownWay.get(0).name.
+                    equals(this.ownWay.get(this.ownWay.size()-1).name)){
                 this.ownWay.add(this.ownWay.get(0));
             }
         }
     }
+
     /**
      * Метод высчитывает новый маршрут для агента с учетом добавляемой вершины.
      * в случае, когда вершины не существует || агент инвалид || вершина уже есть
@@ -110,22 +139,56 @@ public class CitizenAgent extends Agent {
      * @param newPoint точка маршрута, которую планируем добавить
      * @return оптимальная последовательность точек маршрута
      */
-    public List<String> getNewWay (String newPoint){
+    public List<VertexStatus> updNewWay (String newPoint){
 
-        if (!curWay.contains(newPoint) && DataPool.getMyCity().vertexSet().contains(newPoint) && isDriver){
+        VertexStatus newPointStatus = new VertexStatus(newPoint, Status.CURRENT);
+        this.curWay.add(newPointStatus);
+
+        List<VertexStatus> newWay = new LinkedList<>();
+
+        for(VertexStatus vs: this.ownWay){
+            newWay.add(vs);
+        }
+
+        // выбираем ближайшую вершину к фиксированному маршруту
+        double min = Double.MAX_VALUE;
+        VertexStatus minVS;
+
+        // TODO: переделать, нужно сохранять соседей
+        for (VertexStatus vs: this.curWay){
+            if(!newWay.contains(vs)){
+                for(VertexStatus fixedVertice: newWay){
+                    double distance = DataPool.getShortestPaths().shortestDistance(fixedVertice.name, vs.name);
+                    if (distance < min){
+                        minVS = fixedVertice;
+                        min = distance;
+                    }
+                }
+
+                newWay.add(m);
+            }
+            else logger.trace("way "+ this.curWay.toString()+ " already contains "+ vs.name);
+        }
+
+        return newWay;
+    }
+
+    public List<VertexStatus> getNewWay (String newPoint){
+
+        if (!curWayContains(newPoint) && DataPool.getMyCity().vertexSet().contains(newPoint) && isDriver){
             int minLength = Integer.MAX_VALUE;
-            List<String> minWay = new LinkedList<>();
+            List<VertexStatus> minWay = new LinkedList<>();
 
             for(int i = 1; i< this.curWay.size()+1; i++){
                 int length = 0;
 
-                List<String> updWay = new LinkedList<>(this.curWay);
-                updWay.add(i, newPoint);
+                List<VertexStatus> updWay = new LinkedList<>(this.curWay);
+                updWay.add(i, new VertexStatus(newPoint, Status.CURRENT));
 
                 logger.trace(updWay.toString());
 
                 for (int nodeId=0 ; nodeId<updWay.size()-1; nodeId++){
-                    length += DataPool.getShortestPaths().shortestDistance(updWay.get(nodeId), updWay.get(nodeId+1));
+                    length += DataPool.getShortestPaths().shortestDistance(updWay.get(nodeId).name, updWay.get(nodeId+1).name);
                 }
                 if (length < minLength)
                 {
@@ -143,21 +206,16 @@ public class CitizenAgent extends Agent {
      * @return цена "на бензин"
      */
     public double countCurWayPrice (){
-        if (!isDriver){
-            return 0;
-        }
-        else{
-            double price = 0;
-            for (int i = 0; i<curWay.size()-1; i++){
+        double price = 0;
+        for (int i = 0; i < curWay.size()-1; i++){
 
-                Iterator<MyWeightedEdge> edges =  DataPool.getShortestPaths().
-                            getShortestPath(curWay.get(i), curWay.get(i+1)).getEdgeList().iterator();
-                while(edges.hasNext()){
-                    price += edges.next().get_weight();
-                }
+            Iterator<MyWeightedEdge> edges =  DataPool.getShortestPaths().
+                        getShortestPath(curWay.get(i).name, curWay.get(i+1).name).getEdgeList().iterator();
+            while(edges.hasNext()){
+                price += edges.next().get_weight();
             }
-            return price;
         }
+        return price;
     }
 
     /**
@@ -165,12 +223,12 @@ public class CitizenAgent extends Agent {
      * @param nodesInPath вершины, через которые нужно проехать
      * @return цена "на бензин"
      */
-    public double countWayPrice (List<String> nodesInPath){
+    public double countWayPrice (List<VertexStatus> nodesInPath){
 
         double price = 0;
         for (int i = 0; i<nodesInPath.size()-1; i++){
             Iterator<MyWeightedEdge> edges =  DataPool.getShortestPaths().
-                        getShortestPath(nodesInPath.get(i), nodesInPath.get(i+1)).getEdgeList().iterator();
+                        getShortestPath(nodesInPath.get(i).name, nodesInPath.get(i+1).name).getEdgeList().iterator();
 
             while(edges.hasNext()){
                 price += edges.next().get_weight();
@@ -185,7 +243,7 @@ public class CitizenAgent extends Agent {
      * @return true, если предложение выгодное
      */
     public boolean beneficialOffer (Offer offer){
-        List<String> optimalWay = getNewWay(offer.newNode);
+        List<VertexStatus> optimalWay = getNewWay(offer.newNode);
 
         double opt = this.countWayPrice(optimalWay);
         double cur = this.countWayPrice(curWay);
@@ -218,60 +276,4 @@ public class CitizenAgent extends Agent {
         }
         return  curPayment*koef - countCurWayPrice();
     }
-
-    private class VertexStatus{
-        List<Status> list;
-        String name;
-
-        VertexStatus (String s){
-            this.name = s;
-            this.list = new LinkedList<>();
-            this.list.add(Status.PLAIN);
-        }
-        VertexStatus (String s, Status initStatus){
-                this.name = s;
-                this.list = new LinkedList<>();
-                this.list.add(initStatus);
-        }
-
-        void addStatus(Status newStatus){
-            switch (newStatus){
-                case MAIN:
-                    if(!list.contains(Status.MAIN)){
-                        list.add(Status.MAIN);
-                        list.add(Status.CURRENT);
-                    }
-                    break;
-                case GET:
-                    if(!list.contains(Status.GET)) list.add(Status.GET);
-                    break;
-                case PLAIN:
-                    if (list.isEmpty()) list.add(Status.PLAIN);
-                    break;
-                case CURRENT:
-                    if (!list.contains(Status.CURRENT)) list.add(Status.CURRENT);
-                    break;
-                case DELIVER:
-                    if (!list.contains(Status.DELIVER)) list.add(Status.DELIVER);
-                    break;
-            }
-        }
-
-        void popStatus(Status removable){
-            if (list != null){
-                if (list.size()>1){
-                    switch (removable){
-                        case DELIVER: case GET:
-                            list.remove(removable);
-                            break;
-                    }
-                }
-                else {
-                    list = new LinkedList<>();
-                    list.add(Status.PLAIN);
-                }
-            }
-        }
-    }
-
 }

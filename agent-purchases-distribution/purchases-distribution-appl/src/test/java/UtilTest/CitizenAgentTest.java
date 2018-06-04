@@ -8,9 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import purchases.distribution.appl.CitizenAgent;
-import purchases.distribution.appl.Util.CityParserGml;
-import purchases.distribution.appl.Util.GraphVisualize;
-import purchases.distribution.appl.Util.Offer;
+import purchases.distribution.appl.Util.*;
 
 
 import java.io.File;
@@ -37,9 +35,20 @@ public class CitizenAgentTest {
             logger.error(ex.getMessage());
         }
 
-        this.testAgent = new CitizenAgent();
-        testAgent.setCurWay(Arrays.asList("1", "5", "8"));
+        //this.testAgent = new CitizenAgent();
+        //testAgent.setCurWay(Arrays.asList("1", "5", "8"));
 
+    }
+
+    @Test
+    public void checkWayUpdate(){
+        this.testAgent = new CitizenAgent(Arrays.asList("1", "3", "6", "8"));
+        logger.debug(testAgent.getOwnWay().toString());
+
+        this.testAgent.getNewWay("4");
+        this.testAgent.updNewWay("5");
+
+        logger.debug(testAgent.getCurWay().toString());
     }
 
     @Ignore
@@ -51,7 +60,10 @@ public class CitizenAgentTest {
         logger.debug("test results for countCurPriceTest: ");
         logger.debug(Double.toString(this.testAgent.countCurWayPrice()));
 
-        logger.trace(Double.toString(this.testAgent.countWayPrice(Arrays.asList("1", "3", "6", "8"))));
+        logger.trace(Double.toString(this.testAgent.countWayPrice(Arrays.asList(new VertexStatus("1", Status.MAIN),
+                new VertexStatus("3", Status.MAIN),
+                new VertexStatus("6", Status.MAIN),
+                new VertexStatus("8", Status.MAIN)))));
     }
 
     @Test
@@ -72,7 +84,7 @@ public class CitizenAgentTest {
         }};
 
         for (String newItemTesting: list){
-            List<String> rez = testAgent.getNewWay(newItemTesting);
+            List<VertexStatus> rez = testAgent.getNewWay(newItemTesting);
 
             logger.debug("test rezult for item: " + newItemTesting);
             logger.debug(rez.toString());
