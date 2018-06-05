@@ -37,4 +37,5 @@ public class DataPoolTest {
 
         parser.getCity();
     }
+
 }

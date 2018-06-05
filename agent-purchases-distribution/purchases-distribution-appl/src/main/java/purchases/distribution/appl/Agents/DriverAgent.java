@@ -1,7 +1,20 @@
-package purchases.distribution.appl;
+package purchases.distribution.appl.Agents;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import jade.core.Agent;
+import jade.core.AID;
+import jade.core.behaviours.*;
+import jade.lang.acl.*;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.DFService;
+import jade.domain.FIPAException;
 
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 import purchases.distribution.appl.Util.DataPool;
@@ -9,16 +22,122 @@ import purchases.distribution.appl.Util.Offer;
 import purchases.distribution.appl.Util.Status;
 import purchases.distribution.appl.Util.VertexStatus;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+class DriverPedestrianBehaviour extends ParallelBehaviour {
+    private static final MessageTemplate cfpTemplate =
+        MessageTemplate.and(
+            MessageTemplate.MatchPerformative(ACLMessage.CFP),
+            MessageTemplate.MatchReplyWith("initial-negotiation")
+        );
 
-public class CitizenAgent extends Agent {
+    private static final MessageTemplate cntTemplate =
+        MessageTemplate.and(
+            MessageTemplate.or(
+                MessageTemplate.MatchPerformative(ACLMessage.AGREE),
+                MessageTemplate.MatchPerformative(ACLMessage.REFUSE)
+            ),
+            MessageTemplate.MatchReplyWith("initial-negotiation")
+        );
 
-    public static final org.slf4j.Logger logger = LoggerFactory.getLogger(CitizenAgent.class);
+    private HashMap<AID, String> memory = new HashMap<AID, String>();
 
+    private class Proposer extends CyclicBehaviour {
+        public Proposer(Agent agent){
+            super(agent);
+        }
 
-    public CitizenAgent (List<String> mainVertices){
+        @Override
+        public void action(){
+            ACLMessage msg = myAgent.receive(cfpTemplate);
+            if(msg != null){
+                ACLMessage reply = msg.createReply();
+                reply.setContent(
+                    Integer.toString(
+                        ((DriverAgent)myAgent).calculateDeviationCost(msg.getContent())
+                    )
+                );
+                memory.put(msg.getSender(), msg.getContent());
+                myAgent.send(reply);
+            } else block();
+        }
+    }
+
+    private class Counter extends CyclicBehaviour {
+        public Counter(Agent agent){
+            super(agent);
+        }
+
+        @Override
+        public void action(){
+            ACLMessage msg = myAgent.receive(cntTemplate);
+            if(msg != null){
+                if(msg.getPerformative() == ACLMessage.AGREE)
+                    ((DriverAgent)myAgent).addImportantPoint(memory.get(msg.getSender()));
+            } else block();
+        }
+    }
+
+    public DriverPedestrianBehaviour(DriverAgent agent){
+        super(agent, ParallelBehaviour.WHEN_ANY);
+        addSubBehaviour(new Proposer(agent));
+        addSubBehaviour(new Counter(agent));
+    }
+}
+
+public class DriverAgent extends Agent {
+
+    public static final Logger logger = LoggerFactory.getLogger(DriverAgent.class);
+
+    public int calculateDeviationCost(String point){
+        return 4;
+    }
+
+    public void addImportantPoint(String point){
+    }
+
+    @Override
+    public void setup() {
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        ServiceDescription sds = new ServiceDescription();
+        sds.setType("goods-distribution");
+        sds.setName(getLocalName() + " express");
+        dfd.addServices(sds);
+        try {
+            DFService.register(this, dfd);
+        } catch(FIPAException ex){
+            ex.printStackTrace();
+        }
+
+        addBehaviour(new DriverPedestrianBehaviour(this));
+
+        /**
+         *
+         *  НИЖЕ ИНИЦИАЛИЗАЦИЯ ИЗ CITIZEN AGENT
+         *
+         */
+
+        logger.info("Agent " + getAID().getName() + " created");
+
+        Object[] args = getArguments();
+        if (args.length >= 1) {
+            for(Object obj: args){
+                ownWay.add(new VertexStatus((String)obj, Status.MAIN));
+            }
+            if (args.length == 1) {
+                isDriver = false;
+            }
+
+            curWay = new LinkedList<>(ownWay);
+            checkCyclicWays();
+        }
+        else {
+            logger.error("args for agents " + getAID().getName() + " set incorrect");
+            logger.error("agent " + getAID().getName() + " will be destroyed");
+            this.doDelete();
+        }
+    }
+
+    public DriverAgent (List<String> mainVertices){
 
         this.ownWay = new LinkedList<>();
         this.curWay = new LinkedList<>();
@@ -28,7 +147,7 @@ public class CitizenAgent extends Agent {
             curWay.add(new VertexStatus(v, Status.MAIN));
         }
     }
-    public CitizenAgent (){
+    public DriverAgent (){
         this.ownWay = new LinkedList<>();
         this.curWay = new LinkedList<>();
     }
@@ -61,6 +180,7 @@ public class CitizenAgent extends Agent {
     private List<VertexStatus> ownWay;
     private List<VertexStatus> curWay;
 
+
     public List<VertexStatus> getOwnWay(){
         return this.ownWay;
     }
@@ -72,29 +192,6 @@ public class CitizenAgent extends Agent {
      *  isDriver == true, когда агент можнт перемещаться по графу
      */
     private boolean isDriver = true;
-
-    protected void setup(){
-        super.setup();
-        logger.info("Agent " + getAID().getName() + " created");
-
-        Object[] args = getArguments();
-        if (args.length >= 1) {
-            for(Object obj: args){
-                ownWay.add(new VertexStatus((String)obj, Status.MAIN));
-            }
-            if (args.length == 1) {
-                isDriver = false;
-            }
-
-            curWay = new LinkedList<>(ownWay);
-            checkCyclicWays();
-        }
-        else {
-            logger.error("args for agents " + getAID().getName() + " set incorrect");
-            logger.error("agent " + getAID().getName() + " will be destroyed");
-            this.doDelete();
-        }
-    }
 
     /**
      * проверяет, содержит ли текущий путь вершину name
@@ -216,7 +313,7 @@ public class CitizenAgent extends Agent {
         for (int i = 0; i < curWay.size()-1; i++){
 
             Iterator<MyWeightedEdge> edges =  DataPool.getShortestPaths().
-                        getShortestPath(curWay.get(i).name, curWay.get(i+1).name).getEdgeList().iterator();
+                    getShortestPath(curWay.get(i).name, curWay.get(i+1).name).getEdgeList().iterator();
             while(edges.hasNext()){
                 price += edges.next().get_weight();
             }
@@ -234,7 +331,7 @@ public class CitizenAgent extends Agent {
         double price = 0;
         for (int i = 0; i<nodesInPath.size()-1; i++){
             Iterator<MyWeightedEdge> edges =  DataPool.getShortestPaths().
-                        getShortestPath(nodesInPath.get(i).name, nodesInPath.get(i+1).name).getEdgeList().iterator();
+                    getShortestPath(nodesInPath.get(i).name, nodesInPath.get(i+1).name).getEdgeList().iterator();
 
             while(edges.hasNext()){
                 price += edges.next().get_weight();

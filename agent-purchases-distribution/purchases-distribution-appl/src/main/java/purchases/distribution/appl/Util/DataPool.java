@@ -4,58 +4,39 @@ package purchases.distribution.appl.Util;
 import org.jgrapht.alg.FloydWarshallShortestPaths;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import purchases.distribution.appl.GraphImplement.City;
+import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 
+import java.io.File;
 import java.util.List;
 
-public class DataPool <V,E>{
-    /**
-     *  singleton класс:
-     *      - город сохраняется при создании объекта класса DataPool
-     *      - есть только один экземпляр DataPool в проекте
-     */
-
-    private static DataPool instance;
+public class DataPool{
     private DataPool(){
     }
+    public static final double koef = 1;
 
-    public static synchronized DataPool getInstance(){
+    private static File cityFile;
+    private static City<String, MyWeightedEdge> myCity;
+    private static FloydWarshallShortestPaths<String, MyWeightedEdge> allPaths;
 
-        if (instance == null){
-            instance = new DataPool();
+    public static void setMyCity( City<String, MyWeightedEdge> myCity) {
+        if (DataPool.myCity == null)
+            DataPool.myCity = myCity;
+    }
+    public static City<String, MyWeightedEdge> getMyCity(){
+        return DataPool.myCity;
+    }
+    public static void setMyCityFile(File file){
+        if (DataPool.cityFile == null){
+            DataPool.cityFile = file;
         }
-
-        return instance;
     }
-
-    /**
-     * data fields
-     */
-
-    private City<String, DefaultWeightedEdge> myCity;
-
-    public void setMyCity( City<String, DefaultWeightedEdge> myCity) {
-        if (this.myCity == null)
-            this.myCity = myCity;
+    public static File getCityFile (){
+        return DataPool.cityFile;
     }
-
-    public City<String, DefaultWeightedEdge> getMyCity(){
-        return this.myCity;
-    }
-
-    /**
-     * Shortest paths: Floyd Warshall
-     */
-
-    private FloydWarshallShortestPaths<String, DefaultWeightedEdge> allPaths;
-    public  FloydWarshallShortestPaths<String, DefaultWeightedEdge> getShortestPaths(){
+    public  static FloydWarshallShortestPaths<String, MyWeightedEdge> getShortestPaths(){
         if (allPaths == null){
-            this.allPaths = new FloydWarshallShortestPaths(getMyCity());
+            DataPool.allPaths = new FloydWarshallShortestPaths(getMyCity());
         }
         return allPaths;
-    }
-
-
-    public List<String> getShortestPath(String a, String b){
-       return getShortestPaths().getShortestPath(a, b).getVertexList();
     }
 }
