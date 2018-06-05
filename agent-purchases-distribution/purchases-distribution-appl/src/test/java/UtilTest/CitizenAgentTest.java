@@ -42,12 +42,10 @@ public class CitizenAgentTest {
 
     @Test
     public void checkWayUpdate(){
-        this.testAgent = new CitizenAgent(Arrays.asList("1", "3", "6", "8"));
+        this.testAgent = new CitizenAgent(Arrays.asList("9", "3", "6", "8", "1"));
         logger.debug(testAgent.getOwnWay().toString());
 
-        this.testAgent.getNewWay("4");
-        this.testAgent.updNewWay("5");
-
+        logger.info(this.testAgent.updNewWay("5").toString());
         logger.debug(testAgent.getCurWay().toString());
     }
 

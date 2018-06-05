@@ -28,7 +28,8 @@ public class VertexStatus{
                 }
                 break;
             case GET:
-                if(!list.contains(Status.GET)) list.add(Status.GET);
+                if (!list.contains(Status.GET))      list.add(Status.GET);
+                if (!list.contains(Status.CURRENT))  list.add(Status.CURRENT);
                 break;
             case PLAIN:
                 if (list.isEmpty()) list.add(Status.PLAIN);
@@ -38,6 +39,7 @@ public class VertexStatus{
                 break;
             case DELIVER:
                 if (!list.contains(Status.DELIVER)) list.add(Status.DELIVER);
+                if (!list.contains(Status.CURRENT)) list.add(Status.CURRENT);
                 break;
         }
     }

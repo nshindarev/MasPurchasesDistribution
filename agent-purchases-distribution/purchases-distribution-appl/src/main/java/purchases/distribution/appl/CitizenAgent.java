@@ -25,7 +25,7 @@ public class CitizenAgent extends Agent {
 
         for(String v: mainVertices){
             ownWay.add(new VertexStatus(v, Status.MAIN));
-            curWay.add(new VertexStatus(v, Status.CURRENT));
+            curWay.add(new VertexStatus(v, Status.MAIN));
         }
     }
     public CitizenAgent (){
@@ -125,7 +125,7 @@ public class CitizenAgent extends Agent {
         if (this.ownWay.size() > 0){
 
             // собственный маршрут агента
-            if (this.ownWay.get(0).name.
+            if (!this.ownWay.get(0).name.
                     equals(this.ownWay.get(this.ownWay.size()-1).name)){
                 this.ownWay.add(this.ownWay.get(0));
             }
@@ -140,8 +140,9 @@ public class CitizenAgent extends Agent {
      * @return оптимальная последовательность точек маршрута
      */
     public List<VertexStatus> updNewWay (String newPoint){
+        checkCyclicWays();
 
-        VertexStatus newPointStatus = new VertexStatus(newPoint, Status.CURRENT);
+        VertexStatus newPointStatus = new VertexStatus(newPoint, Status.GET);
         this.curWay.add(newPointStatus);
 
         List<VertexStatus> newWay = new LinkedList<>();
@@ -152,20 +153,24 @@ public class CitizenAgent extends Agent {
 
         // выбираем ближайшую вершину к фиксированному маршруту
         double min = Double.MAX_VALUE;
-        VertexStatus minVS;
+        VertexStatus startOfShortestPath = newWay.get(0);
 
-        // TODO: переделать, нужно сохранять соседей
         for (VertexStatus vs: this.curWay){
-            if(!newWay.contains(vs)){
+            if(!newWay.contains(vs) && !newWay.get(0).equals(vs)){
                 for(VertexStatus fixedVertice: newWay){
+
                     double distance = DataPool.getShortestPaths().shortestDistance(fixedVertice.name, vs.name);
                     if (distance < min){
-                        minVS = fixedVertice;
+                        startOfShortestPath = fixedVertice;
                         min = distance;
                     }
                 }
 
-                newWay.add(m);
+
+                newWay.add(newWay.indexOf(startOfShortestPath)+1, vs);
+                logger.debug(vs.name + " added to path "+ newWay.toString());
+
+                this.curWay = new LinkedList<>(newWay);
             }
             else logger.trace("way "+ this.curWay.toString()+ " already contains "+ vs.name);
         }
@@ -173,6 +178,7 @@ public class CitizenAgent extends Agent {
         return newWay;
     }
 
+    @Deprecated
     public List<VertexStatus> getNewWay (String newPoint){
 
         if (!curWayContains(newPoint) && DataPool.getMyCity().vertexSet().contains(newPoint) && isDriver){
