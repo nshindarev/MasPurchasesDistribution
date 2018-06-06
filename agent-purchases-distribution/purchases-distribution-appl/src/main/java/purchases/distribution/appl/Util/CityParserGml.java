@@ -9,6 +9,9 @@ import org.slf4j.LoggerFactory;
 import purchases.distribution.appl.GraphImplement.City;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 
+import java.nio.file.Paths;
+
+
 import java.io.File;
 import java.util.Map;
 
@@ -29,8 +32,9 @@ public class CityParserGml {
         }
     }
     public CityParserGml (){
+        logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
         try {
-            this.cityGmlFile = new File("purchases-distribution-appl/src/main/resources/small_city.gml");
+            this.cityGmlFile = new File("src/main/resources/very_small_city.gml");
             logger.info("city downloaded from file: {}", this.cityGmlFile.getName());
 
             DataPool.setMyCityFile(this.cityGmlFile);

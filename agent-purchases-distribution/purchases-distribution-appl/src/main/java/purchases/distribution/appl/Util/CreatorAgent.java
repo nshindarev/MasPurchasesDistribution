@@ -1,28 +1,47 @@
 package purchases.distribution.appl.Util;
 
+import java.io.*;
 import jade.core.Agent;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import purchases.distribution.appl.CitizenAgent;
+import java.nio.file.Paths;
 
 public class CreatorAgent extends Agent {
 
     public static final Logger logger = LoggerFactory.getLogger(CreatorAgent.class);
 
-    @Override
-    public void setup() {
-
-        try{
+    private void createAgent(String name, String type, Object[] args){
+        try {
             ContainerController cc = getContainerController();
-            AgentController nick   = cc.createNewAgent("nick",   "purchases.distribution.appl.CitizenAgent", new Object[] {"8", "3", "4"});
+            AgentController agent  = cc.createNewAgent(name, type, args);
 
-            nick.start();
+            agent.start();
         }
         catch (StaleProxyException ex){
             logger.error(ex.getLocalizedMessage());
+        }
+    }
+
+    @Override
+    public void setup() {
+        int pedestrians = 0, drivers = 0;
+        logger.info("gon do sum");
+        logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
+        try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/very_small_city.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                logger.debug("looking at " + line);
+                String[] args = line.split(" ");
+                if(args.length == 1)
+                    createAgent("Pedestrian" + (++pedestrians), "purchases.distribution.appl.Agents.PedestrianAgent", args);
+                else
+                    createAgent("Driver" + (++drivers), "purchases.distribution.appl.Agents.DriverAgent", args);
+            }
+        } catch(IOException ex){
+            logger.error("some error");
         }
     }
 }

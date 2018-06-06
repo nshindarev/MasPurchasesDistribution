@@ -16,82 +16,50 @@ import jade.domain.FIPAException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import purchases.distribution.appl.Behaviours.*;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 import purchases.distribution.appl.Util.DataPool;
 import purchases.distribution.appl.Util.Offer;
 import purchases.distribution.appl.Util.Status;
 import purchases.distribution.appl.Util.VertexStatus;
 
-class DriverPedestrianBehaviour extends ParallelBehaviour {
-    private static final MessageTemplate cfpTemplate =
-        MessageTemplate.and(
-            MessageTemplate.MatchPerformative(ACLMessage.CFP),
-            MessageTemplate.MatchReplyWith("initial-negotiation")
-        );
-
-    private static final MessageTemplate cntTemplate =
-        MessageTemplate.and(
-            MessageTemplate.or(
-                MessageTemplate.MatchPerformative(ACLMessage.AGREE),
-                MessageTemplate.MatchPerformative(ACLMessage.REFUSE)
-            ),
-            MessageTemplate.MatchReplyWith("initial-negotiation")
-        );
-
-    private HashMap<AID, String> memory = new HashMap<AID, String>();
-
-    private class Proposer extends CyclicBehaviour {
-        public Proposer(Agent agent){
-            super(agent);
-        }
-
-        @Override
-        public void action(){
-            ACLMessage msg = myAgent.receive(cfpTemplate);
-            if(msg != null){
-                ACLMessage reply = msg.createReply();
-                reply.setContent(
-                    Integer.toString(
-                        ((DriverAgent)myAgent).calculateDeviationCost(msg.getContent())
-                    )
-                );
-                memory.put(msg.getSender(), msg.getContent());
-                myAgent.send(reply);
-            } else block();
-        }
+class PrintRoute extends WakerBehaviour {
+    public PrintRoute(Agent agent, long timeout){
+        super(agent, timeout);
     }
 
-    private class Counter extends CyclicBehaviour {
-        public Counter(Agent agent){
-            super(agent);
-        }
-
-        @Override
-        public void action(){
-            ACLMessage msg = myAgent.receive(cntTemplate);
-            if(msg != null){
-                if(msg.getPerformative() == ACLMessage.AGREE)
-                    ((DriverAgent)myAgent).addImportantPoint(memory.get(msg.getSender()));
-            } else block();
-        }
-    }
-
-    public DriverPedestrianBehaviour(DriverAgent agent){
-        super(agent, ParallelBehaviour.WHEN_ANY);
-        addSubBehaviour(new Proposer(agent));
-        addSubBehaviour(new Counter(agent));
+    @Override
+    protected void handleElapsedTimeout(){
+        ((DriverAgent) myAgent).printWay();
     }
 }
+
+class DriverBehaviour extends ParallelBehaviour {
+    public DriverBehaviour(Agent agent){
+        super(agent, ParallelBehaviour.WHEN_ANY);
+        GenerateProposal genprop = new GenerateProposal(agent, "request-drop");
+        CollectResponses collect = new CollectResponses(agent, "request-drop");
+
+        genprop.setDataStore(getDataStore());
+        collect.setDataStore(getDataStore());
+
+        addSubBehaviour(genprop);
+        addSubBehaviour(collect);
+        addSubBehaviour(new PrintRoute(agent, 5000));
+    }
+};
 
 public class DriverAgent extends Agent {
 
     public static final Logger logger = LoggerFactory.getLogger(DriverAgent.class);
 
-    public int calculateDeviationCost(String point){
-        return 4;
+    public double calculateDeviationCost(String point){
+        List<VertexStatus> newWay = updNewWay(point);
+        return countWayPrice(newWay) - countCurWayPrice();
     }
 
     public void addImportantPoint(String point){
+        curWay = updNewWay(point);
     }
 
     @Override
@@ -108,7 +76,7 @@ public class DriverAgent extends Agent {
             ex.printStackTrace();
         }
 
-        addBehaviour(new DriverPedestrianBehaviour(this));
+        addBehaviour(new DriverBehaviour(this));
 
         /**
          *
@@ -267,7 +235,7 @@ public class DriverAgent extends Agent {
                 newWay.add(newWay.indexOf(startOfShortestPath)+1, vs);
                 logger.debug(vs.name + " added to path "+ newWay.toString());
 
-                this.curWay = new LinkedList<>(newWay);
+                //this.curWay = new LinkedList<>(newWay);
             }
             else logger.trace("way "+ this.curWay.toString()+ " already contains "+ vs.name);
         }
@@ -378,5 +346,9 @@ public class DriverAgent extends Agent {
             return 0;
         }
         return  curPayment*koef - countCurWayPrice();
+    }
+
+    public void printWay(){
+        logger.info(getCurWay().toString());
     }
 }
