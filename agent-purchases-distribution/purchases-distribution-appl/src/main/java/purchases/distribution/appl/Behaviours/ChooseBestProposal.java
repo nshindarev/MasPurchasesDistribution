@@ -7,7 +7,7 @@ import jade.lang.acl.*;
 public class ChooseBestProposal extends Behaviour {
     private int counter;
     private ACLMessage chosen_reply;
-    private int best_offer = Integer.MAX_VALUE;
+    private double best_offer = Integer.MAX_VALUE;
 
     private final MessageTemplate template;
 
@@ -16,7 +16,7 @@ public class ChooseBestProposal extends Behaviour {
         template =
             MessageTemplate.and(
                 MessageTemplate.MatchPerformative(ACLMessage.PROPOSE),
-                MessageTemplate.MatchReplyWith(topic)
+                MessageTemplate.MatchInReplyTo(topic)
             );
     }
 
@@ -35,11 +35,14 @@ public class ChooseBestProposal extends Behaviour {
         ACLMessage msg = myAgent.receive(template);
         if(msg != null){
             ACLMessage reply = msg.createReply();
-            int offer = Integer.parseInt(msg.getContent());
+            reply.setInReplyTo(msg.getInReplyTo());
+            double offer = Double.parseDouble(msg.getContent());
             if(offer < best_offer){
                 best_offer = offer;
-                chosen_reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-                myAgent.send(reply);
+                if(chosen_reply != null){
+                    chosen_reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                    myAgent.send(reply);
+                }
                 chosen_reply = reply;
             } else {
                 reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
@@ -48,7 +51,7 @@ public class ChooseBestProposal extends Behaviour {
             counter--;
             if(counter == 0){
                 chosen_reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
-                myAgent.send(reply);
+                myAgent.send(chosen_reply);
             }
         } else block();
     }

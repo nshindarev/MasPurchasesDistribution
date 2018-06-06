@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 import jade.core.Agent;
 import jade.core.AID;
@@ -20,6 +22,7 @@ import purchases.distribution.appl.Behaviours.*;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 import purchases.distribution.appl.Util.DataPool;
 import purchases.distribution.appl.Util.Offer;
+import purchases.distribution.appl.Util.Route;
 import purchases.distribution.appl.Util.Status;
 import purchases.distribution.appl.Util.VertexStatus;
 
@@ -45,7 +48,7 @@ class DriverBehaviour extends ParallelBehaviour {
 
         addSubBehaviour(genprop);
         addSubBehaviour(collect);
-        addSubBehaviour(new PrintRoute(agent, 5000));
+        addSubBehaviour(new PrintRoute(agent, 10000));
     }
 };
 
@@ -54,13 +57,16 @@ public class DriverAgent extends Agent {
     public static final Logger logger = LoggerFactory.getLogger(DriverAgent.class);
 
     public double calculateDeviationCost(String point){
-        List<VertexStatus> newWay = updNewWay(point);
-        return countWayPrice(newWay) - countCurWayPrice();
+        logger.info("someone wants to add " + point);
+        return route.addDropPoint(point).length() - route.length();
     }
 
     public void addImportantPoint(String point){
-        curWay = updNewWay(point);
+        logger.info("adding point " + point);
+        route = route.addDropPoint(point);
     }
+
+    private Route route;
 
     @Override
     public void setup() {
@@ -87,6 +93,12 @@ public class DriverAgent extends Agent {
         logger.info("Agent " + getAID().getName() + " created");
 
         Object[] args = getArguments();
+        ArrayList<String> mains = new ArrayList<>();
+        for(Object arg : args)
+            mains.add((String)arg);
+        mains.add(mains.get(0));
+        route = new Route(mains, null, new HashSet<String>());
+        logger.info("initial route: " + route.toString());
         if (args.length >= 1) {
             for(Object obj: args){
                 ownWay.add(new VertexStatus((String)obj, Status.MAIN));
@@ -349,6 +361,6 @@ public class DriverAgent extends Agent {
     }
 
     public void printWay(){
-        logger.info(getCurWay().toString());
+        logger.info(route.toString());
     }
 }

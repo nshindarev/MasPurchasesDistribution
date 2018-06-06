@@ -19,7 +19,7 @@ public class CollectResponses extends CyclicBehaviour {
                     MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL),
                     MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL)
                 ),
-                MessageTemplate.MatchReplyWith(topic)
+                MessageTemplate.MatchInReplyTo(topic)
             );
     }
 

@@ -32,6 +32,7 @@ public class CreatorAgent extends Agent {
         logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
         try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/very_small_city.txt"))) {
             String line;
+            DataPool.setStorageName(br.readLine());
             while ((line = br.readLine()) != null) {
                 logger.debug("looking at " + line);
                 String[] args = line.split(" ");

@@ -17,6 +17,7 @@ public class DataPool{
     private static File cityFile;
     private static City<String, MyWeightedEdge> myCity;
     private static FloydWarshallShortestPaths<String, MyWeightedEdge> allPaths;
+    private static String storageName;
 
     public static void setMyCity( City<String, MyWeightedEdge> myCity) {
         if (DataPool.myCity == null)
@@ -38,5 +39,12 @@ public class DataPool{
             DataPool.allPaths = new FloydWarshallShortestPaths(getMyCity());
         }
         return allPaths;
+    }
+
+    public static void setStorageName(String name){
+        storageName = name;
+    }
+    public static String getStorageName(){
+        return storageName;
     }
 }
