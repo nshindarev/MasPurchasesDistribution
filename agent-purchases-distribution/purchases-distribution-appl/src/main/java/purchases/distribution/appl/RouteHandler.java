@@ -13,12 +13,12 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-public class CitizenAgent extends Agent {
+public class RouteHandler extends Agent {
 
-    public static final org.slf4j.Logger logger = LoggerFactory.getLogger(CitizenAgent.class);
+    public static final org.slf4j.Logger logger = LoggerFactory.getLogger(RouteHandler.class);
 
 
-    public CitizenAgent (List<String> mainVertices){
+    public RouteHandler(List<String> mainVertices){
 
         this.ownWay = new LinkedList<>();
         this.curWay = new LinkedList<>();
@@ -28,7 +28,7 @@ public class CitizenAgent extends Agent {
             curWay.add(new VertexStatus(v, Status.MAIN));
         }
     }
-    public CitizenAgent (){
+    public RouteHandler(){
         this.ownWay = new LinkedList<>();
         this.curWay = new LinkedList<>();
     }
@@ -51,15 +51,17 @@ public class CitizenAgent extends Agent {
      */
     private double curPayment = 0;
     private double koef = DataPool.koef;
+
     private int goods;
+
 
     /**
      *  содержат только необходимые для посещения вершины в определенном порядке
      *  ownWay  = персональные точки, которые обязательно посещает агент
      *  curWay  = точки с учетом доставки
      */
-    private List<VertexStatus> ownWay;
-    private List<VertexStatus> curWay;
+    public List<VertexStatus> ownWay;
+    public List<VertexStatus> curWay;
 
     public List<VertexStatus> getOwnWay(){
         return this.ownWay;
@@ -177,34 +179,46 @@ public class CitizenAgent extends Agent {
 
         return newWay;
     }
+    public List<VertexStatus> updNewWay (VertexStatus newPoint){
 
-    @Deprecated
-    public List<VertexStatus> getNewWay (String newPoint){
+        checkCyclicWays();
 
-        if (!curWayContains(newPoint) && DataPool.getMyCity().vertexSet().contains(newPoint) && isDriver){
-            int minLength = Integer.MAX_VALUE;
-            List<VertexStatus> minWay = new LinkedList<>();
+        if(newPoint.isGet()||newPoint.isDeliver()){
+            this.curWay.add(newPoint);
 
-            for(int i = 1; i< this.curWay.size()+1; i++){
-                int length = 0;
+            List<VertexStatus> newWay = new LinkedList<>();
 
-                List<VertexStatus> updWay = new LinkedList<>(this.curWay);
-                updWay.add(i, new VertexStatus(newPoint, Status.CURRENT));
-
-                logger.trace(updWay.toString());
-
-                for (int nodeId=0 ; nodeId<updWay.size()-1; nodeId++){
-                    length += DataPool.getShortestPaths().shortestDistance(updWay.get(nodeId).name, updWay.get(nodeId+1).name);
-                }
-                if (length < minLength)
-                {
-                    minLength = length;
-                    minWay = new LinkedList(updWay);
-                }
+            for(VertexStatus vs: this.ownWay){
+                newWay.add(vs);
             }
-            return minWay;
+
+            // выбираем ближайшую вершину к фиксированному маршруту
+            double min = Double.MAX_VALUE;
+            VertexStatus startOfShortestPath = newWay.get(0);
+
+            for (VertexStatus vs: this.curWay){
+                if(!newWay.contains(vs) && !newWay.get(0).equals(vs)){
+                    for(VertexStatus fixedVertice: newWay){
+
+                        double distance = DataPool.getShortestPaths().shortestDistance(fixedVertice.name, vs.name);
+                        if (distance < min){
+                            startOfShortestPath = fixedVertice;
+                            min = distance;
+                        }
+                    }
+
+
+                    newWay.add(newWay.indexOf(startOfShortestPath)+1, vs);
+                    logger.debug(vs.name + " added to path "+ newWay.toString());
+
+                    this.curWay = new LinkedList<>(newWay);
+                }
+                else logger.trace("way "+ this.curWay.toString()+ " already contains "+ vs.name);
+            }
+
+            return newWay;
         }
-        return curWay;
+        else return new LinkedList<>();
     }
 
     /**
@@ -249,7 +263,7 @@ public class CitizenAgent extends Agent {
      * @return true, если предложение выгодное
      */
     public boolean beneficialOffer (Offer offer){
-        List<VertexStatus> optimalWay = getNewWay(offer.newNode);
+        List<VertexStatus> optimalWay = updNewWay(offer.newNode);
 
         double opt = this.countWayPrice(optimalWay);
         double cur = this.countWayPrice(curWay);
@@ -266,7 +280,7 @@ public class CitizenAgent extends Agent {
      */
     public void approveOffer (Offer offer){
         if (beneficialOffer(offer)){
-            this.curWay = getNewWay(offer.newNode);
+            this.curWay = updNewWay(offer.newNode);
             this.curPayment += offer.payment;
             this.goods += 1;
         }
@@ -281,5 +295,10 @@ public class CitizenAgent extends Agent {
             return 0;
         }
         return  curPayment*koef - countCurWayPrice();
+    }
+
+    @Override
+    public String toString(){
+        return curWay.toString();
     }
 }

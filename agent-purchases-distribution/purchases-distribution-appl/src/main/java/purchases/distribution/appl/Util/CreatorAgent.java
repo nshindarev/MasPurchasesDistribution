@@ -7,6 +7,8 @@ import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URL;
 import java.nio.file.Paths;
 
 public class CreatorAgent extends Agent {
@@ -30,7 +32,9 @@ public class CreatorAgent extends Agent {
         int pedestrians = 0, drivers = 0;
         logger.info("gon do sum");
         logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
-        try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/very_small_city.txt"))) {
+
+        
+        try (BufferedReader br = new BufferedReader(new FileReader("agent-purchases-distribution\\purchases-distribution-appl\\src\\main\\resources\\very_small_city.txt"))) {
             String line;
             DataPool.setStorageName(br.readLine());
             while ((line = br.readLine()) != null) {
