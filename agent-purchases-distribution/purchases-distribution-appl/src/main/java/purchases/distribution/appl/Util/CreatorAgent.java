@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.LinkedList;
+import java.util.List;
 
 public class CreatorAgent extends Agent {
 
@@ -33,20 +35,20 @@ public class CreatorAgent extends Agent {
         logger.info("gon do sum");
         logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
 
-        
-        try (BufferedReader br = new BufferedReader(new FileReader("agent-purchases-distribution\\purchases-distribution-appl\\src\\main\\resources\\very_small_city.txt"))) {
-            String line;
-            DataPool.setStorageName(br.readLine());
-            while ((line = br.readLine()) != null) {
-                logger.debug("looking at " + line);
-                String[] args = line.split(" ");
-                if(args.length == 1)
-                    createAgent("Pedestrian" + (++pedestrians), "purchases.distribution.appl.Agents.PedestrianAgent", args);
-                else
-                    createAgent("Driver" + (++drivers), "purchases.distribution.appl.Agents.DriverAgent", args);
+
+
+        if(DataPool.getAgentsPaths().size()>0){
+            DataPool.setStorageName(DataPool.getAgentsPaths().get(0).toString());
+            DataPool.getAgentsPaths().remove(0);
+
+            for(List<String> agentPoints: DataPool.getAgentsPaths()){
+                logger.debug("looking at " + agentPoints.toString());
+                if(agentPoints.size() == 1)
+                        createAgent("Pedestrian" + (++pedestrians), "purchases.distribution.appl.Agents.PedestrianAgent", agentPoints.toArray());
+                    else
+                        createAgent("Driver" + (++drivers), "purchases.distribution.appl.Agents.DriverAgent", agentPoints.toArray());
+                }
             }
-        } catch(IOException ex){
-            logger.error("some error");
         }
-    }
+
 }
