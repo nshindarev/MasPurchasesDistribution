@@ -7,19 +7,20 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import purchases.distribution.appl.CitizenAgent;
+import purchases.distribution.appl.RouteHandler;
 import purchases.distribution.appl.Util.*;
 
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Set;
 
-public class CitizenAgentTest {
-    private static final Logger logger = LoggerFactory.getLogger(CitizenAgentTest.class);
-    private CitizenAgent testAgent;
+public class RouteHandlerTest {
+    private static final Logger logger = LoggerFactory.getLogger(RouteHandlerTest.class);
+
+    private RouteHandler testAgent;
+    private Set<String> vertexSet;
 
     @Before
     public void setCityForTest()throws IOException {
@@ -30,29 +31,32 @@ public class CitizenAgentTest {
         CityParserGml parser =  new CityParserGml(new File("src/main/resources/small_city.gml"));
             parser.parseCityFromFile();
             logger.info("city initialized successfully");
+
+            this.vertexSet = DataPool.getMyCity().vertexSet();
+            logger.trace("city contains " + vertexSet.size() + " vertices");
         }
         catch (ImportException ex){
             logger.error(ex.getMessage());
         }
 
-        //this.testAgent = new CitizenAgent();
-        //testAgent.setCurWay(Arrays.asList("1", "5", "8"));
 
     }
 
     @Test
     public void checkWayUpdate(){
-        this.testAgent = new CitizenAgent(Arrays.asList("9", "3", "6", "8", "1"));
+        this.testAgent = new RouteHandler(Arrays.asList("9", "3", "6", "8", "1"));
         logger.debug(testAgent.getOwnWay().toString());
 
-        logger.info(this.testAgent.updNewWay("5").toString());
-        logger.debug(testAgent.getCurWay().toString());
+        for(String point: this.vertexSet){
+            logger.info(this.testAgent.updNewWay(new VertexStatus(point, Status.DELIVER)).toString());
+            logger.debug(testAgent.getCurWay().toString());
+        }
     }
 
     @Ignore
     @Test
     public void countCurPriceTest(){
-        this.testAgent = new CitizenAgent();
+        this.testAgent = new RouteHandler();
         testAgent.setCurWay(Arrays.asList("1", "3", "6", "8"));
 
         logger.debug("test results for countCurPriceTest: ");
@@ -64,35 +68,10 @@ public class CitizenAgentTest {
                 new VertexStatus("8", Status.MAIN)))));
     }
 
-    @Test
-    public void addNewVertexTest() {
-
-        logger.debug("test new way for testAgent");
-        ArrayList<String> list = new ArrayList<String>() {{
-            add("0");
-            add("1");
-            add("2");
-            add("3");
-            add("4");
-            add("5");
-            add("6");
-            add("7");
-            add("8");
-            add("9");
-        }};
-
-        for (String newItemTesting: list){
-            List<VertexStatus> rez = testAgent.getNewWay(newItemTesting);
-
-            logger.debug("test rezult for item: " + newItemTesting);
-            logger.debug(rez.toString());
-        }
-    }
-
     @Ignore
     @Test
     public void testBenefitCounter (){
-        this.testAgent = new CitizenAgent();
+        this.testAgent = new RouteHandler();
         testAgent.setCurWay(Arrays.asList("1", "3", "6", "8"));
 
         logger.debug("test results for testBenefitCounter: ");
@@ -103,7 +82,7 @@ public class CitizenAgentTest {
 
     @Test
     public void checkCyclicPathTest(){
-        this.testAgent = new CitizenAgent();
+        this.testAgent = new RouteHandler();
         testAgent.setCurWay(Arrays.asList("1", "3", "6", "8"));
 
         testAgent.checkCyclicWays();
@@ -117,4 +96,6 @@ public class CitizenAgentTest {
         GraphVisualize gv = new GraphVisualize();
         gv.init();
     }
+
+
 }
