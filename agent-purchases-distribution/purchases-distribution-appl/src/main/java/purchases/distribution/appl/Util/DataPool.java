@@ -23,10 +23,13 @@ public class DataPool{
 
     //---------fields------------------
     public static final double koef = 1;
+    private static String storageName;
+
     private static File cityFile;
+    private static File agentsFile;
+
     private static City<String, MyWeightedEdge> myCity;
     private static FloydWarshallShortestPaths<String, MyWeightedEdge> allPaths;
-    private static String storageName;
     private static List<List<String>> agentsPaths;
 
     // объект - город
@@ -36,6 +39,14 @@ public class DataPool{
     }
     public static City<String, MyWeightedEdge> getMyCity(){
         return DataPool.myCity;
+    }
+
+    // файл с конфигами агентов
+    public static void setAgentsFile(File file){
+        DataPool.agentsFile = file;
+    }
+    public static File getAgentsFile(){
+        return DataPool.agentsFile;
     }
 
     // файл с городом
