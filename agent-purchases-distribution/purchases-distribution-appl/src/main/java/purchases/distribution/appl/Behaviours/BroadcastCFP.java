@@ -1,5 +1,7 @@
 package purchases.distribution.appl.Behaviours;
 
+import java.util.*;
+
 import jade.core.Agent;
 import jade.core.behaviours.*;
 import jade.lang.acl.*;
@@ -8,8 +10,11 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 
+import purchases.distribution.appl.Behaviours.*;
+
 public class BroadcastCFP extends OneShotBehaviour {
     private String topic, content;
+    private int result = FSM.FAILURE;
 
     public BroadcastCFP(Agent agent, String topic, String content){
         super(agent);
@@ -18,21 +23,34 @@ public class BroadcastCFP extends OneShotBehaviour {
     }
 
     @Override
+    public int onEnd(){
+        return result;
+    }
+
+    @Override
     public void action(){
+        result = FSM.FAILURE;
         DFAgentDescription template = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
         sd.setType("goods-distribution");
         template.addServices(sd);
         try {
             DFAgentDescription[] agents = DFService.search(myAgent, template);
-            ACLMessage msg = new ACLMessage(ACLMessage.CFP);
+            ArrayList<String> convIds = new ArrayList<>();
             for(int i = 0; i < agents.length; i++){
+                String convId = UUID.randomUUID().toString();
+                ACLMessage msg = new ACLMessage(ACLMessage.CFP);
                 msg.addReceiver(agents[i].getName());
+                msg.setReplyWith(topic);
+                msg.setContent(content);
+                msg.setConversationId(convId);
+                myAgent.send(msg);
+                convIds.add(convId);
             }
-            msg.setReplyWith(topic);
-            msg.setContent(content);
-            myAgent.send(msg);
-            getDataStore().put("num_agents", agents.length);
+            if(!convIds.isEmpty()){
+                result = FSM.SUCCESS;
+                getDataStore().put("possible_partners", convIds);
+            }
         } catch(FIPAException ex){
             ex.printStackTrace();
         }

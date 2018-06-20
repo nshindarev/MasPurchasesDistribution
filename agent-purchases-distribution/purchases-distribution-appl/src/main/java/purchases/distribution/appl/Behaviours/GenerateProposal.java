@@ -4,12 +4,12 @@ import java.util.HashMap;
 import jade.core.*;
 import jade.core.behaviours.*;
 import jade.lang.acl.*;
-import purchases.distribution.appl.Util.Offer;
+import purchases.distribution.appl.Util.Request;
 import purchases.distribution.appl.Agents.DriverAgent;
 
 public class GenerateProposal extends CyclicBehaviour {
     private final MessageTemplate template;
-    private HashMap<AID, Offer> memory;
+    private HashMap<AID, Request> memory;
 
     public GenerateProposal(Agent agent, String topic){
         super(agent);
@@ -23,9 +23,9 @@ public class GenerateProposal extends CyclicBehaviour {
     @Override
     public void onStart(){
         if(!getDataStore().containsKey("proposal_memory"))
-            getDataStore().put("proposal_memory", new HashMap<AID, Offer>());
+            getDataStore().put("proposal_memory", new HashMap<AID, Request>());
 
-        memory = (HashMap<AID, Offer>) getDataStore().get("proposal_memory");
+        memory = (HashMap<AID, Request>) getDataStore().get("proposal_memory");
     }
 
     @Override
@@ -38,7 +38,7 @@ public class GenerateProposal extends CyclicBehaviour {
             cost = 50 + Math.max(cost, 0);
             reply.setContent(Double.toString(cost));
             myAgent.send(reply);
-            memory.put(msg.getSender(), new Offer(msg.getContent(), cost));
+            memory.put(msg.getSender(), new Request(msg.getSender(), msg.getContent(), msg.getConversationId(), cost));
         } else block();
     }
 }

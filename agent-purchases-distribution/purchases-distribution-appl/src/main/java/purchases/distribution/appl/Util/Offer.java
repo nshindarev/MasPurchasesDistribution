@@ -1,13 +1,15 @@
 package purchases.distribution.appl.Util;
 
+import jade.core.AID;
+
 public class Offer {
+    public AID partner;
+    public double price;
+    public String convId;
 
-    public double payment = 0;
-    public String newNode;
-
-
-    public Offer(String node, double price){
-        this.newNode = node;
-        this.payment = price;
+    public Offer(AID partner, double price, String convId){
+        this.partner = partner;
+        this.price = price;
+        this.convId  = convId;
     }
 }
