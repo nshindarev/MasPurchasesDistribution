@@ -19,7 +19,13 @@ class Node {
 
     @Override
     public String toString(){
-        return name;
+        char t = 'x';
+        switch(type){
+        case PICK: t = 'P'; break;
+        case DROP: t = 'D'; break;
+        case MAIN: t = 'M'; break;
+        }
+        return name + t;
     }
 }
 
@@ -36,11 +42,75 @@ public class Route {
         this.pickPoint  = pickPoint;
         this.dropPoints = new HashSet<String>(dropPoints);
         points = new ArrayList<Node>();
-        generateNearest();
+        //generateNearest();
+        generateOptimal();
+    }
+
+    private Route(ArrayList<Node> nodes){
+        this.points = nodes;
+        mainPoints = new ArrayList<String>();
+        dropPoints = new HashSet<String>();
+        for(Node n : nodes){
+            switch(n.type){
+            case Node.PICK:
+                pickPoint = n.name;
+                break;
+            case Node.DROP:
+                dropPoints.add(n.name);
+                break;
+            case Node.MAIN:
+                mainPoints.add(n.name);
+            }
+        }
     }
 
     private static double dist(Node a, Node b){
         return DataPool.getShortestPaths().shortestDistance(a.name, b.name);
+    }
+
+    private ArrayList<Node> optimalRoute(List<Node> current, List<Node> mains, Node pick, HashSet<Node> drops){
+        ArrayList<Node> best = null;
+        if(mains.isEmpty() && pick == null && drops.isEmpty()) return new ArrayList<Node>(current);
+        if(pick != null){
+            current.add(pick);
+            ArrayList<Node> tmp = optimalRoute(current, mains, null, drops);
+            current.remove(current.size() - 1);
+            if(best == null || length(tmp) < length(best))
+                best = tmp;
+        }
+        if(pick == null && !drops.isEmpty()){
+            HashSet<Node> dropsTmp = (HashSet<Node>) drops.clone();
+            for(Node n : drops){
+                current.add(n);
+                dropsTmp.remove(n);
+                ArrayList<Node> tmp = optimalRoute(current, mains, null, dropsTmp);
+                dropsTmp.add(n);
+                current.remove(current.size() - 1);
+                if(best == null || length(tmp) < length(best))
+                    best = tmp;
+            }
+        }
+        if((pick == null && drops.isEmpty()) || mains.size() > 1){
+            current.add(mains.get(0));
+            ArrayList<Node> tmp = optimalRoute(current, mains.subList(1, mains.size()), pick, drops);
+            current.remove(current.size() - 1);
+            if(best == null || length(tmp) < length(best))
+                best = tmp;
+        }
+        return best;
+    }
+
+    private void generateOptimal(){
+        ArrayList<Node> mains = new ArrayList<Node>();
+        for(String name : mainPoints)
+            mains.add(new Node(name, Node.MAIN));
+        HashSet<Node> drops = new HashSet<Node>();
+        for(String name : dropPoints)
+            drops.add(new Node(name, Node.DROP));
+        Node pick = pickPoint == null ? null : new Node(pickPoint, Node.PICK);
+        ArrayList<Node> current = new ArrayList<Node>();
+        current.add(mains.get(0));
+        points = optimalRoute(current, mains.subList(1, mains.size()), pick, drops);
     }
 
     private void generateNearest(){
@@ -94,11 +164,17 @@ public class Route {
         points.add(mains.get(current_main++));
     }
 
-    public double length(){
+    private double length(ArrayList<Node> nodes){
         double total = 0;
-        for(int i = 1; i < points.size(); i++)
-            total += dist(points.get(i - 1), points.get(i));
+        for(int i = 1; i < nodes.size(); i++){
+            //System.out.println("going to add: " + nodes.get(i - 1).name + ' ' + nodes.get(i).name + ' ' + dist(nodes.get(i - 1), nodes.get(i)));
+            total += dist(nodes.get(i - 1), nodes.get(i));
+        }
         return total;
+    }
+
+    public double length(){
+        return length(points);
     }
 
     public Route addDropPoint(String name){

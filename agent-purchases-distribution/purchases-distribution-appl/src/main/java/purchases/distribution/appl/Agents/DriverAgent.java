@@ -68,6 +68,7 @@ public class DriverAgent extends Agent {
     }
 
     private Route route;
+    private double init_length = 0;
 
     @Override
     public void setup() {
@@ -82,8 +83,6 @@ public class DriverAgent extends Agent {
         } catch(FIPAException ex){
             ex.printStackTrace();
         }
-
-        addBehaviour(new DriverBehaviour(this, logger));
 
         /**
          *
@@ -100,7 +99,9 @@ public class DriverAgent extends Agent {
                 mains.add((String)arg);
             mains.add(mains.get(0));
             route = new Route(mains, null, new HashSet<String>());
-            logger.info("initial route: " + route.toString());
+            init_length = route.length();
+            logger.info("initial route: " + route.toString() + ' ' + init_length);
+            addBehaviour(new DriverBehaviour(this, logger));
         }
         else {
             logger.error("args for agents " + getAID().getName() + " set incorrect");
@@ -110,6 +111,6 @@ public class DriverAgent extends Agent {
     }
 
     public void printWay(){
-        logger.info(route.toString());
+        logger.info(route.toString() + ' ' + route.length() + ' ' + init_length);
     }
 }

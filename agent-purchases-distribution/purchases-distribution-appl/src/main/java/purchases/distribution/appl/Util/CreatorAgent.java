@@ -30,7 +30,7 @@ public class CreatorAgent extends Agent {
         int pedestrians = 0, drivers = 0;
         logger.info("gon do sum");
         logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
-        try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/very_small_city.txt"))) {
+        try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/grid10.txt"))) {
             String line;
             DataPool.setStorageName(br.readLine());
             while ((line = br.readLine()) != null) {
