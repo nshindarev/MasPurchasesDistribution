@@ -5,6 +5,7 @@ import jade.core.Agent;
 import jade.core.behaviours.*;
 import jade.lang.acl.*;
 
+import purchases.distribution.appl.Agents.DriverAgent;
 import purchases.distribution.appl.Util.Offer;
 
 public class AcceptProposal extends Behaviour {
@@ -17,6 +18,7 @@ public class AcceptProposal extends Behaviour {
     private boolean success = false;
     private boolean receiving = false;
     private ArrayList<Offer> offers;
+    private Offer finalOffer = null;
 
     private final MessageTemplate template;
 
@@ -41,6 +43,8 @@ public class AcceptProposal extends Behaviour {
         offers.subList(i, offers.size()).clear();
     }
 
+    public void onSuccess(Offer offer){}
+
     @Override
     public void onStart(){
         offers = (ArrayList<Offer>) getDataStore().get("acceptable_offers");
@@ -50,7 +54,12 @@ public class AcceptProposal extends Behaviour {
 
     @Override
     public int onEnd(){
-        return success ? FSM.SUCCESS : FSM.FAILURE;
+        if(success){
+            onSuccess(offers.get(current_index));
+            return FSM.SUCCESS;
+        } else {
+            return FSM.FAILURE;
+        }
     }
 
     @Override
@@ -65,11 +74,13 @@ public class AcceptProposal extends Behaviour {
         if(offers.isEmpty() || current_index >= offers.size()){
             allDone = true;
             success = false;
+            getDataStore().remove("currently_agreeing");
             return;
         }
         Offer offer = offers.get(current_index);
         switch(state){
         case 0: // отправить ACCEPT_PROPOSAL лучшему предложению
+            getDataStore().put("currently_agreeing", true);
             msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
             msg.setInReplyTo(topic);
             msg.setReplyWith(topic);
@@ -89,13 +100,18 @@ public class AcceptProposal extends Behaviour {
                 receiving = false;
                 if(msg.getPerformative() == ACLMessage.AGREE){
                     state = 2;
+                    finalOffer = offers.get(current_index);
                 } else {
-                    offer.price = Double.parseDouble(msg.getContent());
-                    for(int i = 1; i < offers.size(); i++){
-                        if(offers.get(i).price < offer.price){
-                            offers.set(i - 1, offers.get(i));
-                            offers.set(i, offer);
-                        } else break;
+                    if(msg.getContent().length() == 0){
+                        offers.remove(current_index);
+                    } else {
+                        offer.price = Double.parseDouble(msg.getContent());
+                        for(int i = current_index + 1; i < offers.size(); i++){
+                            if(offers.get(i).price < offer.price){
+                                offers.set(i - 1, offers.get(i));
+                                offers.set(i, offer);
+                            } else break;
+                        }
                     }
                     state = 0;
                 }

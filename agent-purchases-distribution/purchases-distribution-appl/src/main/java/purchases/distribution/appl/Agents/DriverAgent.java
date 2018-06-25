@@ -26,31 +26,121 @@ import purchases.distribution.appl.Util.Route;
 import purchases.distribution.appl.Util.Status;
 import purchases.distribution.appl.Util.VertexStatus;
 
-class PrintRoute extends WakerBehaviour {
-    public PrintRoute(Agent agent, long timeout){
+class TimeLimit extends WakerBehaviour {
+    public TimeLimit(Agent agent, long timeout){
         super(agent, timeout);
     }
 
     @Override
-    protected void handleElapsedTimeout(){
+    public void handleElapsedTimeout(){
+        ((Logger)getDataStore().get("logger")).info(((ArrayList<String>)getDataStore().get("supply_chain")).toString());
         ((DriverAgent) myAgent).printWay();
+        myAgent.doDelete();
     }
 }
 
-class DriverBehaviour extends ParallelBehaviour {
-    public DriverBehaviour(Agent agent, Logger logger){
-        super(agent, ParallelBehaviour.WHEN_ANY);
-        GenerateProposal genprop = new GenerateProposal(agent, "request-drop");
-        CollectResponses collect = new CollectResponses(agent, "request-drop");
+class RoutePing extends TickerBehaviour {
+    private String prev = null;
 
+    public RoutePing(Agent agent, long period){
+        super(agent, period);
+    }
+
+    @Override
+    public void onTick(){
+        Broadcast broadcast_route = new Broadcast(myAgent, ACLMessage.INFORM, "my-route"){
+            @Override
+            public String getContent(){
+                String current = ((DriverAgent)myAgent).getRoute().toString();
+                if(prev != null && current.toString().equals(prev)) return null;
+                prev = current;
+                ((Logger)getDataStore().get("logger")).info("PING");
+                return current;
+            }
+        };
+        broadcast_route.setDataStore(getDataStore());
+        myAgent.addBehaviour(broadcast_route);
+    }
+}
+
+class UpdateChain extends CyclicBehaviour {
+    private static final MessageTemplate template =
+        MessageTemplate.and(
+            MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+            MessageTemplate.MatchReplyWith("supply-chain")
+        );
+
+    public UpdateChain(Agent agent){
+        super(agent);
+    }
+
+    @Override
+    public void action(){
+        ACLMessage msg = myAgent.receive(template);
+        if(msg != null){
+            ((Logger) getDataStore().get("logger")).info("GOT SOME CHAIN");
+            HashSet<String> all = new HashSet<String>();
+            ArrayList<String> chain = (ArrayList<String>) getDataStore().get("supply_chain");
+            for(String supplier : chain)
+                all.add(supplier);
+            for(String supplier : msg.getContent().split("\\R"))
+                all.add(supplier);
+            all.remove("");
+            chain.clear();
+            for(String supplier : all)
+                chain.add(supplier);
+            ((Logger) getDataStore().get("logger")).info("current_chain " + chain.toString());
+            Behaviour inform = new InformClients(myAgent);
+            inform.setDataStore(getDataStore());
+            myAgent.addBehaviour(inform);
+        } else block();
+    }
+}
+
+class DriverBehaviour extends OneShotBehaviour {
+    public DriverBehaviour(Agent agent, Logger logger){
+        super(agent);
         getDataStore().put("logger", logger);
+        getDataStore().put("money", 0.0);
+        getDataStore().put("promising_points", new HashMap<String, Double>());
+        getDataStore().put("acceptable_price", 50.0);
+    }
+
+    @Override
+    public void action(){
+        GenerateProposal genprop = new GenerateProposal(myAgent, "request-drop");
+        CollectResponses collect = new CollectResponses(myAgent, "request-drop");
+        RouteAnalyzer    analyze = new RouteAnalyzer(myAgent);
+        UpdateChain      update  = new UpdateChain(myAgent);
+        DriverNegotiation negotiation = new DriverNegotiation(myAgent);
+        RoutePing broadcast_route = new RoutePing(myAgent, 2000);
+        TimeLimit limit = new TimeLimit(myAgent, 60000);
+        TickerBehaviour ticker = new TickerBehaviour(myAgent, 1000){
+            @Override
+            public void onTick(){
+                Behaviour inform = new InformClients(myAgent);
+                inform.setDataStore(getDataStore());
+                myAgent.addBehaviour(inform);
+            }
+        };
 
         genprop.setDataStore(getDataStore());
         collect.setDataStore(getDataStore());
+        analyze.setDataStore(getDataStore());
+        update.setDataStore(getDataStore());
+        negotiation.setDataStore(getDataStore());
+        broadcast_route.setDataStore(getDataStore());
+        limit.setDataStore(getDataStore());
+        ticker.setDataStore(getDataStore());
 
-        addSubBehaviour(genprop);
-        addSubBehaviour(collect);
-        addSubBehaviour(new PrintRoute(agent, 10000));
+        myAgent.addBehaviour(genprop);
+        myAgent.addBehaviour(collect);
+        myAgent.addBehaviour(analyze);
+        myAgent.addBehaviour(update);
+        myAgent.addBehaviour(negotiation);
+        myAgent.addBehaviour(broadcast_route);
+        myAgent.addBehaviour(limit);
+        myAgent.addBehaviour(ticker);
     }
 };
 
@@ -67,8 +157,14 @@ public class DriverAgent extends Agent {
         route = route.addDropPoint(point);
     }
 
+    public void changePickPoint(String point){
+        logger.info("changing pick up point to " + point);
+        route = route.changePickPoint(point);
+    }
+
     private Route route;
     private double init_length = 0;
+    private double ware_length = 0;
 
     @Override
     public void setup() {
@@ -84,12 +180,6 @@ public class DriverAgent extends Agent {
             ex.printStackTrace();
         }
 
-        /**
-         *
-         *  НИЖЕ ИНИЦИАЛИЗАЦИЯ ИЗ CITIZEN AGENT
-         *
-         */
-
         logger.info("Agent " + getAID().getName() + " created");
 
         Object[] args = getArguments();
@@ -100,7 +190,9 @@ public class DriverAgent extends Agent {
             mains.add(mains.get(0));
             route = new Route(mains, null, new HashSet<String>());
             init_length = route.length();
-            logger.info("initial route: " + route.toString() + ' ' + init_length);
+            route = new Route(mains, DataPool.getStorageName(), new HashSet<String>());
+            ware_length = route.length();
+            logger.info("initial route: " + route.toString() + ' ' + ware_length);
             addBehaviour(new DriverBehaviour(this, logger));
         }
         else {
@@ -111,6 +203,8 @@ public class DriverAgent extends Agent {
     }
 
     public void printWay(){
-        logger.info(route.toString() + ' ' + route.length() + ' ' + init_length);
+        logger.info(route.toString() + ' ' + route.length() + ' ' + ware_length + ' ' + init_length);
     }
+
+    public Route getRoute(){ return route; }
 }

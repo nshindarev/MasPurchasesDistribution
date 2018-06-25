@@ -12,14 +12,17 @@ import jade.domain.FIPAException;
 
 import purchases.distribution.appl.Behaviours.*;
 
-public class BroadcastCFP extends OneShotBehaviour {
-    private String topic, content;
+public abstract class Broadcast extends OneShotBehaviour {
+    private String topic;
+    private int performative;
     private int result = FSM.FAILURE;
 
-    public BroadcastCFP(Agent agent, String topic, String content){
+    abstract public String getContent();
+
+    public Broadcast(Agent agent, int performative, String topic){
         super(agent);
+        this.performative = performative;
         this.topic = topic;
-        this.content = content;
     }
 
     @Override
@@ -30,16 +33,22 @@ public class BroadcastCFP extends OneShotBehaviour {
     @Override
     public void action(){
         result = FSM.FAILURE;
+        ArrayList<String> convIds = new ArrayList<>();
+        getDataStore().put("possible_partners", convIds);
+
+        String content = getContent();
+        if(content == null) return;
+
         DFAgentDescription template = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
         sd.setType("goods-distribution");
         template.addServices(sd);
         try {
             DFAgentDescription[] agents = DFService.search(myAgent, template);
-            ArrayList<String> convIds = new ArrayList<>();
             for(int i = 0; i < agents.length; i++){
+                if(agents[i].getName().equals(myAgent.getAID())) continue;
                 String convId = UUID.randomUUID().toString();
-                ACLMessage msg = new ACLMessage(ACLMessage.CFP);
+                ACLMessage msg = new ACLMessage(performative);
                 msg.addReceiver(agents[i].getName());
                 msg.setReplyWith(topic);
                 msg.setContent(content);
@@ -49,7 +58,6 @@ public class BroadcastCFP extends OneShotBehaviour {
             }
             if(!convIds.isEmpty()){
                 result = FSM.SUCCESS;
-                getDataStore().put("possible_partners", convIds);
             }
         } catch(FIPAException ex){
             ex.printStackTrace();

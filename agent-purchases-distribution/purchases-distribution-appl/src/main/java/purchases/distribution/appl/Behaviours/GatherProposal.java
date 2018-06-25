@@ -20,7 +20,10 @@ public class GatherProposal extends ParallelBehaviour {
         super(agent, ParallelBehaviour.WHEN_ALL);
         template =
             MessageTemplate.and(
-                MessageTemplate.MatchPerformative(ACLMessage.PROPOSE),
+                MessageTemplate.or(
+                    MessageTemplate.MatchPerformative(ACLMessage.REFUSE),
+                    MessageTemplate.MatchPerformative(ACLMessage.PROPOSE)
+                ),
                 MessageTemplate.MatchInReplyTo(topic)
             );
     }
@@ -49,14 +52,18 @@ public class GatherProposal extends ParallelBehaviour {
         double acceptable_price = (double) ds.get("acceptable_price");
         logger.info("got some offers");
         logger.info("acceptable price: " + acceptable_price);
+        boolean hadOffers = false;
         for(ReceiverBehaviour.Handle h : handles){
             try {
                 ACLMessage msg = h.getMessage();
-                double price = Double.parseDouble(msg.getContent());
+                if(msg.getPerformative() == ACLMessage.REFUSE) continue;
+                hadOffers = true;
+                String[] contentParts = msg.getContent().split("\\R", 2);
+                double price = Double.parseDouble(contentParts[0]);
                 logger.info("offer: " + price);
 
                 if(price <= acceptable_price){
-                    offers.add(new Offer(msg.getSender(), price, msg.getConversationId()));
+                    offers.add(new Offer(msg.getSender(), price, msg.getConversationId(), new ArrayList<String>(Arrays.asList(contentParts[1].split("\\R")))));
                 } else {
                     ACLMessage reply = msg.createReply();
                     msg.setPerformative(ACLMessage.REJECT_PROPOSAL);
@@ -70,6 +77,7 @@ public class GatherProposal extends ParallelBehaviour {
             }
         }
         getDataStore().put("acceptable_offers", offers);
+        if(!hadOffers) return 3;
         return offers.size() > 0 ? FSM.SUCCESS : FSM.FAILURE;
     }
 }

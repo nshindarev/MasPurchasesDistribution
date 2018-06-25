@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 
 import purchases.distribution.appl.Util.CityParserGml;
 import purchases.distribution.appl.Util.DataPool;
+import purchases.distribution.appl.Util.Route;
+import java.util.*;
 
 
 public class Main {
@@ -29,6 +31,24 @@ public class Main {
         for(String n1 : DataPool.getMyCity().vertexSet())
         for(String n2 : DataPool.getMyCity().vertexSet())
             DataPool.getShortestPaths().shortestDistance(n1, n2);
+
+        //Route route1 = new Route(Arrays.asList("32", "64", "29"), "56", new HashSet<String>());
+        //Route route1 = new Route(Arrays.asList("11", "15", "25"), "56", new HashSet<String>());
+        //logger.info(route1.toString());
+        //logger.info(route1.expand().toString());
+
+        //Route route2 = new Route(Arrays.asList("37", "67", "34", "18"), "56", new HashSet<String>());
+        //logger.info(route2.toString());
+        //logger.info(route2.expand().toString());
+
+        //Route route3 = new Route(Arrays.asList("79", "85", "52"), "56", new HashSet<String>());
+        //logger.info(route3.toString());
+        //logger.info(route3.expand().toString());
+
+        //logger.info(route1.optimalMiddlePoint(route2));
+        //logger.info(route1.optimalMiddlePoint(route3));
+        //logger.info(route2.optimalMiddlePoint(route3));
+
 
         logger.info("application started");
         jade.Boot.main(new String[] {

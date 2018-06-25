@@ -17,6 +17,16 @@ class Node {
         this.type = type;
     }
 
+    public Node(String name, char type){
+        this.name = name;
+        switch(type){
+        case 'P': this.type = PICK; break;
+        case 'D': this.type = DROP; break;
+        case 'M': this.type = MAIN; break;
+        default: this.type = -1;
+        }
+    }
+
     @Override
     public String toString(){
         char t = 'x';
@@ -35,15 +45,16 @@ public class Route {
     private HashSet<String>  dropPoints;
 
     private ArrayList<Node> points;
+    private ArrayList<String> full = null;
+    private double len = -1;
 
     public Route(List<String> mainPoints, String pickPoint, HashSet<String> dropPoints){
-        assert (pickPoint == null) == dropPoints.isEmpty();
         this.mainPoints = mainPoints;
         this.pickPoint  = pickPoint;
         this.dropPoints = new HashSet<String>(dropPoints);
         points = new ArrayList<Node>();
-        //generateNearest();
-        generateOptimal();
+        if(dropPoints.size() < 10) generateOptimal();
+        else generateNearest();
     }
 
     private Route(ArrayList<Node> nodes){
@@ -64,8 +75,35 @@ public class Route {
         }
     }
 
+    public static Route fromString(String str){
+        String[] parts = str.substring(1, str.length() - 1).split(", ");
+        ArrayList<Node> nodes = new ArrayList<Node>();
+        for(String part : parts)
+            nodes.add(new Node(part.substring(0, part.length() - 1), part.charAt(part.length() - 1)));
+        return new Route(nodes);
+    }
+
+    private static double dist(String a, String b){
+        return DataPool.getShortestPaths().shortestDistance(a, b);
+    }
+
     private static double dist(Node a, Node b){
         return DataPool.getShortestPaths().shortestDistance(a.name, b.name);
+    }
+
+    private static String middle(String a, String b){
+        if(a.equals(b)) return a;
+        List<String> path = DataPool.getShortestPaths().getShortestPath(a, b).getVertexList();
+        String best = null;
+        double diff = Double.MAX_VALUE;
+        for(String node : path){
+            double d = Math.abs(dist(a, node) - dist(b, node));
+            if(d < diff){
+                best = node;
+                diff = d;
+            }
+        }
+        return best;
     }
 
     private ArrayList<Node> optimalRoute(List<Node> current, List<Node> mains, Node pick, HashSet<Node> drops){
@@ -174,13 +212,14 @@ public class Route {
     }
 
     public double length(){
-        return length(points);
+        if(len > 0) return len;
+        return len = length(points);
     }
 
     public Route addDropPoint(String name){
         if(dropPoints.contains(name)) return this;
         dropPoints.add(name);
-        Route newRoute = new Route(mainPoints, dropPoints.size() == 1 ? DataPool.getStorageName() : pickPoint, dropPoints);
+        Route newRoute = new Route(mainPoints, pickPoint, dropPoints);
         dropPoints.remove(name);
         return newRoute;
     }
@@ -188,13 +227,60 @@ public class Route {
     public Route removeDropPoint(String name){
         if(!dropPoints.contains(name)) return this;
         dropPoints.remove(name);
-        Route newRoute = new Route(mainPoints, dropPoints.isEmpty() ? null : pickPoint, dropPoints);
+        Route newRoute = new Route(mainPoints, pickPoint, dropPoints);
         dropPoints.add(name);
         return newRoute;
     }
 
     public Route changePickPoint(String name){
         return new Route(mainPoints, name, dropPoints);
+    }
+
+    public ArrayList<String> expand(){
+        if(full != null) return full;
+        full = new ArrayList<String>();
+        full.add(points.get(0).name);
+        for(int i = 1; i < points.size(); i++){
+            String prev = points.get(i-1).name;
+            String curr = points.get(i).name;
+            full.add(curr);
+            //if(prev.equals(curr)) continue;
+            //List<String> path = DataPool.getShortestPaths().getShortestPath(prev, curr).getVertexList();
+            //for(int j = 1; j < path.size(); j++){
+            //    full.add(path.get(j));
+            //}
+        }
+        return full;
+    }
+
+    public String optimalMiddlePoint(Route that){
+        ArrayList<String> full_this = expand();
+        ArrayList<String> full_that = that.expand();
+        String best = null;
+        double max = 1e-5;
+        for(String here : full_this)
+        for(String there: full_that){
+            String mid = middle(here, there);
+            Route new_this = this.changePickPoint(mid);
+            Route new_that = that.addDropPoint(mid);
+            double profit = this.length() - new_this.length() + that.length() - new_that.length();
+            if(profit > max){
+                max = profit;
+                best = mid;
+            }
+        }
+        if(best == null) return null;
+        //Route new_this = this.changePickPoint(best);
+        //Route new_that = that.addDropPoint(best);
+        //double improvement = this.length() - new_this.length() + that.length() - new_that.length();
+        //System.out.println("new_this: " + new_this.length());
+        //System.out.println("new_that: " + new_that.length());
+        //System.out.println("this: " + new_this.toString());
+        //System.out.println("this improvement: " + improvement);
+        //System.out.println("that: " + new_that.toString());
+        //System.out.println("that improvement: " + (that.length() - new_that.length()));
+        //System.out.println("profit: " + max);
+        return best;
     }
 
     @Override

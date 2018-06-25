@@ -34,7 +34,7 @@ public class CityParserGml {
     public CityParserGml (){
         logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
         try {
-            this.cityGmlFile = new File("src/main/resources/grid10.gml");
+            this.cityGmlFile = new File("src/main/resources/grid40.gml");
             logger.info("city downloaded from file: {}", this.cityGmlFile.getName());
 
             DataPool.setMyCityFile(this.cityGmlFile);
