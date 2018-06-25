@@ -7,7 +7,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import purchases.distribution.appl.CitizenAgent;
 import purchases.distribution.appl.Util.*;
 
 
@@ -18,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class CitizenAgentTest {
-    private static final Logger logger = LoggerFactory.getLogger(CitizenAgentTest.class);
+  /*  private static final Logger logger = LoggerFactory.getLogger(CitizenAgentTest.class);
     private CitizenAgent testAgent;
 
     @Before
@@ -116,5 +115,5 @@ public class CitizenAgentTest {
     public void visualizeTest(){
         GraphVisualize gv = new GraphVisualize();
         gv.init();
-    }
+    }*/
 }

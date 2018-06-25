@@ -8,6 +8,7 @@ import jade.wrapper.StaleProxyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.file.Paths;
+import java.util.List;
 
 public class CreatorAgent extends Agent {
 
@@ -30,19 +31,30 @@ public class CreatorAgent extends Agent {
         int pedestrians = 0, drivers = 0;
         logger.info("gon do sum");
         logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
-        try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/grid10.txt"))) {
-            String line;
-            DataPool.setStorageName(br.readLine());
-            while ((line = br.readLine()) != null) {
-                logger.debug("looking at " + line);
-                String[] args = line.split(" ");
-                if(args.length == 1)
-                    createAgent("Pedestrian" + (++pedestrians), "purchases.distribution.appl.Agents.PedestrianAgent", args);
+
+        if (DataPool.getAgentsPaths() != null){
+            for(List<String> mains: DataPool.getAgentsPaths()){
+                logger.trace("looking at: "+ mains.toString());
+                if (mains.size() == 1)
+                    createAgent("Pedestrian" + (++pedestrians), "purchases.distribution.appl.Agents.PedestrianAgent", mains.toArray());
                 else
-                    createAgent("Driver" + (++drivers), "purchases.distribution.appl.Agents.DriverAgent", args);
+                    createAgent("Driver" + (++drivers), "purchases.distribution.appl.Agents.DriverAgent", mains.toArray());
             }
-        } catch(IOException ex){
-            logger.error("some error");
+
         }
+//        try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/grid10.txt"))) {
+//            String line;
+//            DataPool.setStorageName(br.readLine());
+//            while ((line = br.readLine()) != null) {
+//                logger.debug("looking at " + line);
+//                String[] args = line.split(" ");
+//                if(args.length == 1)
+//                    createAgent("Pedestrian" + (++pedestrians), "purchases.distribution.appl.Agents.PedestrianAgent", args);
+//                else
+//                    createAgent("Driver" + (++drivers), "purchases.distribution.appl.Agents.DriverAgent", args);
+//            }
+//        } catch(IOException ex){
+//            logger.error("some error");
+//        }
     }
 }

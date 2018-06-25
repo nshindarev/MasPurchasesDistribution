@@ -7,6 +7,7 @@ import purchases.distribution.appl.GraphImplement.City;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 
 import java.io.File;
+import java.util.LinkedList;
 import java.util.List;
 
 public class DataPool{
@@ -14,10 +15,13 @@ public class DataPool{
     }
     public static final double koef = 1;
 
+    private static File agentsFile;
     private static File cityFile;
     private static City<String, MyWeightedEdge> myCity;
     private static FloydWarshallShortestPaths<String, MyWeightedEdge> allPaths;
     private static String storageName;
+    private static List<List<String>> agentsPaths;
+
 
     public static void setMyCity( City<String, MyWeightedEdge> myCity) {
         if (DataPool.myCity == null)
@@ -46,5 +50,22 @@ public class DataPool{
     }
     public static String getStorageName(){
         return storageName;
+    }
+
+    public static void setAgentsPaths(List<List<String>> agentsPaths){
+        if (DataPool.agentsPaths == null){
+            DataPool.agentsPaths = new LinkedList<>(agentsPaths);
+        }
+    }
+    public static List<List<String>> getAgentsPaths(){
+        return agentsPaths;
+    }
+
+    // файл с конфигами агентов
+    public static void setAgentsFile(File file){
+        DataPool.agentsFile = file;
+    }
+    public static File getAgentsFile(){
+        return DataPool.agentsFile;
     }
 }

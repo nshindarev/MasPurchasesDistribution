@@ -9,16 +9,24 @@ import org.slf4j.LoggerFactory;
 import purchases.distribution.appl.GraphImplement.City;
 import purchases.distribution.appl.GraphImplement.MyWeightedEdge;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Paths;
 
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 public class CityParserGml {
     public static final Logger logger = LoggerFactory.getLogger(CityParserGml.class);
 
     private File cityGmlFile;
+    private File agentsTxtFile;
+
     private City<String, MyWeightedEdge> city = new City(MyWeightedEdge.class);
 
 
@@ -30,6 +38,11 @@ public class CityParserGml {
         catch (Exception ex){
             logger.error(ex.getMessage());
         }
+    }
+
+    public CityParserGml(File cityGmlFile, File agentsTxtFile){
+        this.cityGmlFile = cityGmlFile;
+        this.agentsTxtFile = agentsTxtFile;
     }
     public CityParserGml (){
         logger.debug("currently at: " + Paths.get(".").toAbsolutePath().normalize().toString());
@@ -58,6 +71,20 @@ public class CityParserGml {
 
             importer.importGraph(this.city, this.cityGmlFile);
             updateDataPool(this.city);
+        }
+
+        if (DataPool.getAgentsPaths() == null){
+            LinkedList<List<String>> agentsPaths = new LinkedList<>();
+            try(BufferedReader br = new BufferedReader(new FileReader(agentsTxtFile))){
+                String line;
+                while ((line = br.readLine())!= null){
+                    agentsPaths.add(Arrays.asList(line.split(" ")));
+                }
+                DataPool.setAgentsPaths(agentsPaths);
+            }
+            catch (IOException ex){
+                logger.error(ex.getMessage());
+            }
         }
     }
 
