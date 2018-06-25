@@ -22,7 +22,6 @@ public class InformClients extends OneShotBehaviour {
         for(String supplier : chain){
             content.append(supplier); content.append('\n');
         }
-        content.append(myAgent.getAID().getLocalName());
         for(AID partner : clients){
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
             msg.addReceiver(partner);

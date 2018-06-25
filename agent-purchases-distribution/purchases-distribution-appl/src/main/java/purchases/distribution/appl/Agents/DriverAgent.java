@@ -78,17 +78,9 @@ class UpdateChain extends CyclicBehaviour {
     public void action(){
         ACLMessage msg = myAgent.receive(template);
         if(msg != null){
-            ((Logger) getDataStore().get("logger")).info("GOT SOME CHAIN");
-            HashSet<String> all = new HashSet<String>();
             ArrayList<String> chain = (ArrayList<String>) getDataStore().get("supply_chain");
-            for(String supplier : chain)
-                all.add(supplier);
             for(String supplier : msg.getContent().split("\\R"))
-                all.add(supplier);
-            all.remove("");
-            chain.clear();
-            for(String supplier : all)
-                chain.add(supplier);
+                if(!chain.contains(supplier)) chain.add(supplier);
             ((Logger) getDataStore().get("logger")).info("current_chain " + chain.toString());
             Behaviour inform = new InformClients(myAgent);
             inform.setDataStore(getDataStore());
@@ -114,7 +106,7 @@ class DriverBehaviour extends OneShotBehaviour {
         UpdateChain      update  = new UpdateChain(myAgent);
         DriverNegotiation negotiation = new DriverNegotiation(myAgent);
         RoutePing broadcast_route = new RoutePing(myAgent, 2000);
-        TimeLimit limit = new TimeLimit(myAgent, 60000);
+        TimeLimit limit = new TimeLimit(myAgent, 30000);
         TickerBehaviour ticker = new TickerBehaviour(myAgent, 1000){
             @Override
             public void onTick(){
@@ -140,7 +132,7 @@ class DriverBehaviour extends OneShotBehaviour {
         myAgent.addBehaviour(negotiation);
         myAgent.addBehaviour(broadcast_route);
         myAgent.addBehaviour(limit);
-        myAgent.addBehaviour(ticker);
+        //myAgent.addBehaviour(ticker);
     }
 };
 

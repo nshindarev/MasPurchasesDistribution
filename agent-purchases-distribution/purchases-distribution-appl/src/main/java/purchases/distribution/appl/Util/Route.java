@@ -263,8 +263,9 @@ public class Route {
             String mid = middle(here, there);
             Route new_this = this.changePickPoint(mid);
             Route new_that = that.addDropPoint(mid);
-            double profit = this.length() - new_this.length() + that.length() - new_that.length();
-            if(profit > max){
+            double ownProfit = this.length() - new_this.length();
+            double profit = ownProfit + that.length() - new_that.length();
+            if(ownProfit > 0 && profit > max){
                 max = profit;
                 best = mid;
             }

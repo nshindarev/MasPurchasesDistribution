@@ -45,7 +45,11 @@ public class RouteAnalyzer extends CyclicBehaviour {
 
             Route new_this = route.changePickPoint(point);
             Route new_that = other.addDropPoint(point);
-            double profit = route.length() - new_this.length() + other.length() - new_that.length();
+            double ownProfit   = route.length() - new_this.length();
+            double theirProfit = other.length() - new_that.length();
+            if(ownProfit < 0) return;
+            //if(Math.abs(theirProfit - ownProfit) < 1e-5 && myAgent.getAID().getLocalName().compareTo(msg.getSender().getLocalName()) == -1) return;
+            double profit = ownProfit + theirProfit;
             ((Logger) getDataStore().get("logger")).info(point + ' ' + profit);
             if(!memory.containsKey(point) || memory.get(point) < profit)
                 memory.put(point, profit);

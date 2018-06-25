@@ -4,7 +4,7 @@ import java.util.*;
 import jade.core.*;
 import jade.core.behaviours.*;
 import jade.lang.acl.*;
-import purchases.distribution.appl.Util.Request;
+import purchases.distribution.appl.Util.*;
 import purchases.distribution.appl.Agents.DriverAgent;
 
 public class CollectResponses extends CyclicBehaviour {
@@ -48,7 +48,15 @@ public class CollectResponses extends CyclicBehaviour {
             if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
                 DriverAgent driver = (DriverAgent) myAgent;
                 ACLMessage reply = msg.createReply();
-                if(chain.contains(msg.getSender().getLocalName())){
+                ArrayList<Offer> offers = (ArrayList<Offer>) getDataStore().get("acceptable_offers");
+                boolean contains = false;
+                if(offers != null)
+                    for(Offer offer : offers)
+                        if(offer.partner.equals(msg.getSender())){
+                            contains = true;
+                            break;
+                        }
+                if(contains || chain.contains(msg.getSender().getLocalName())){
                     reply.setPerformative(ACLMessage.REFUSE);
                     reply.setContent("");
                     myAgent.send(reply);
