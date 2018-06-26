@@ -44,5 +44,8 @@ public class CreatorAgent extends Agent {
         } catch(IOException ex){
             logger.error("some error");
         }
+        Object[] arg = new Object[1];
+        arg[0] = drivers;
+        createAgent("collector", "purchases.distribution.appl.Agents.StatCollector", arg);
     }
 }

@@ -35,6 +35,7 @@ class TimeLimit extends WakerBehaviour {
     public void handleElapsedTimeout(){
         ((Logger)getDataStore().get("logger")).info(((ArrayList<String>)getDataStore().get("supply_chain")).toString());
         ((DriverAgent) myAgent).printWay();
+        ((DriverAgent) myAgent).reportDeviation();
         myAgent.doDelete();
     }
 }
@@ -196,6 +197,14 @@ public class DriverAgent extends Agent {
 
     public void printWay(){
         logger.info(route.toString() + ' ' + route.length() + ' ' + ware_length + ' ' + init_length);
+    }
+
+    public void reportDeviation(){
+        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+        msg.setReplyWith("deviation");
+        msg.addReceiver(new AID("collector", false));
+        msg.setContent("" + (route.length() - init_length));
+        send(msg);
     }
 
     public Route getRoute(){ return route; }
