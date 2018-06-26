@@ -59,6 +59,8 @@ class UpdateChain extends CyclicBehaviour {
             ArrayList<String> chain = (ArrayList<String>) getDataStore().get("supply_chain");
             for(String supplier : msg.getContent().split("\\R"))
                 if(!chain.contains(supplier)) chain.add(supplier);
+            String sender = msg.getSender().getLocalName();
+            if(!chain.contains(sender)) chain.add(sender);
             ((Logger) getDataStore().get("logger")).info("current_chain " + chain.toString());
             SequentialBehaviour notify_clients = new SequentialBehaviour(myAgent);
 

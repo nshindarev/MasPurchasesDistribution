@@ -7,6 +7,7 @@ import jade.lang.acl.*;
 
 import purchases.distribution.appl.Agents.DriverAgent;
 import purchases.distribution.appl.Util.Offer;
+import org.slf4j.Logger;
 
 public class AcceptProposal extends Behaviour {
     public static final long TIMEOUT = 1000;
@@ -17,6 +18,7 @@ public class AcceptProposal extends Behaviour {
     private boolean allDone = false;
     private boolean success = false;
     private boolean receiving = false;
+    private boolean gotExpensive = false;
     private ArrayList<Offer> offers;
 
     private final MessageTemplate template;
@@ -53,12 +55,27 @@ public class AcceptProposal extends Behaviour {
     }
 
     @Override
+    public void reset(){
+        allDone = success = false;
+        state = 0;
+        current_index = 0;
+        offers = null;
+        gotExpensive = false;
+    }
+
+    @Override
     public int onEnd(){
         if(success){
-            onSuccess(offers.get(current_index));
+            onSuccess(offers.get(0));
+            ((Logger)getDataStore().get("logger")).info("YAY");
+            reset();
             return FSM.SUCCESS;
-        } else {
+        } else if(gotExpensive){
+            reset();
             return FSM.FAILURE;
+        } else {
+            reset();
+            return 3;
         }
     }
 
@@ -69,17 +86,17 @@ public class AcceptProposal extends Behaviour {
 
     @Override
     public void action(){
-        if(allDone) return;
+        offers = (ArrayList<Offer>) getDataStore().get("acceptable_offers");
         ACLMessage msg;
         removeUnacceptable();
-        if(offers.isEmpty() || current_index >= offers.size()){
+        if(offers.isEmpty()){
+            ((Logger)getDataStore().get("logger")).info("no offers");
             allDone = true;
             success = false;
             getDataStore().remove("currently_agreeing");
             return;
         }
-        Offer offer = offers.get(current_index);
-        success = false;
+        Offer offer = offers.get(0);
         switch(state){
         case 0: // отправить ACCEPT_PROPOSAL лучшему предложению
             getDataStore().put("currently_agreeing", true);
@@ -89,9 +106,12 @@ public class AcceptProposal extends Behaviour {
             msg.setConversationId(offer.convId);
             msg.addReceiver(offer.partner);
             myAgent.send(msg);
+            ((Logger)getDataStore().get("logger")).info("sent an ACCEPT");
             state = 1;
+            allDone = false;
             break;
         case 1: // ждать ответ, AGREE => успех, REFUSE => обновить цену предложения и state <- 0
+            allDone = false;
             msg = myAgent.receive(
                 MessageTemplate.and(
                     template,
@@ -101,11 +121,14 @@ public class AcceptProposal extends Behaviour {
             if(msg != null){
                 receiving = false;
                 if(msg.getPerformative() == ACLMessage.AGREE){
+                    ((Logger)getDataStore().get("logger")).info("YAY");
                     state = 2;
                 } else {
+                    ((Logger)getDataStore().get("logger")).info("OH NOES "+ msg.getContent());
                     if(msg.getContent().length() == 0){
-                        offers.remove(current_index);
+                        offers.remove(0);
                     } else {
+                        gotExpensive = true;
                         offer.price = Double.parseDouble(msg.getContent());
                         for(int i = current_index + 1; i < offers.size(); i++){
                             if(offers.get(i).price < offer.price){
@@ -113,23 +136,19 @@ public class AcceptProposal extends Behaviour {
                                 offers.set(i, offer);
                             } else break;
                         }
+                        removeUnacceptable();
                     }
                     state = 0;
                 }
-            } else if(receiving){
-                receiving = false;
-                current_index++;
-            } else {
-                receiving = true;
-                block();
-            }
+            } else block();
+            break;
         case 2: // отправить остальным REJECT_PROPOSAL
             for(int i = 1; i < offers.size(); i++){
                 msg = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
                 msg.setInReplyTo(topic);
                 msg.setReplyWith(topic);
-                msg.setConversationId(offer.convId);
-                msg.addReceiver(offer.partner);
+                msg.setConversationId(offers.get(i).convId);
+                msg.addReceiver(offers.get(i).partner);
                 myAgent.send(msg);
             }
             allDone = success = true;

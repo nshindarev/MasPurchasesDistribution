@@ -185,6 +185,7 @@ public class DriverNegotiation extends FSMBehaviour {
 
         registerTransition("accept", "ping", FSM.SUCCESS);
         registerTransition("accept", "lower_expectations", FSM.FAILURE);
+        registerTransition("accept", "remove_best", 3);
 
         registerTransition("send_next", "wait", FSM.SUCCESS);
         registerTransition("send_next", "quit", FSM.FAILURE);
