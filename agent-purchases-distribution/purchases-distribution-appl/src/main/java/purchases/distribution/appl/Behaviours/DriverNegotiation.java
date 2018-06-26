@@ -1,7 +1,7 @@
 package purchases.distribution.appl.Behaviours;
 
 import java.util.*;
-import jade.core.Agent;
+import jade.core.*;
 import jade.core.behaviours.*;
 import jade.lang.acl.*;
 import purchases.distribution.appl.Agents.*;
@@ -16,15 +16,37 @@ public class DriverNegotiation extends FSMBehaviour {
     }
 
     @Override
-    protected void handleStateEntered(Behaviour behaviour){
-        if(behaviour instanceof FSM.Wait){
-            behaviour.reset();
-        }
-    }
-
-    @Override
     public void onStart(){
-        Behaviour        wait      = new FSM.Wait(myAgent, 2000);
+        Behaviour        waitTurn  = new Behaviour(myAgent){
+            private final MessageTemplate template =
+                MessageTemplate.and(
+                    MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+                    MessageTemplate.MatchReplyWith("your-turn")
+                );
+            private int result = FSM.SUCCESS;
+            private boolean over = false;
+            @Override
+            public boolean done(){ return over; }
+            @Override
+            public void action(){
+                ((Logger)getDataStore().get("logger")).info("waiting for my turn");
+                ACLMessage msg = myAgent.receive(template);
+                if(msg != null){
+                    over = true;
+                    getDataStore().put("proposal_memory", new HashMap<AID, Request>());
+                    int timer = Integer.parseInt(msg.getContent());
+                    getDataStore().put("timer", timer);
+                    ((Logger)getDataStore().get("logger")).info("timer is now " + timer);
+                    if(timer > 50 || getDataStore().containsKey("found_mediator"))
+                        result = FSM.FAILURE;
+                } else block();
+            }
+            @Override
+            public int onEnd(){
+                over = false;
+                return result;
+            }
+        };
         Broadcast        broadcast = new Broadcast(myAgent, ACLMessage.CFP, "request-drop"){
             @Override
             public String getContent(){
@@ -38,6 +60,7 @@ public class DriverNegotiation extends FSMBehaviour {
                         max = profit;
                     }
                 }
+                ((Logger)getDataStore().get("logger")).info("broadcasting " + best);
                 getDataStore().put("currently_considering", best);
                 return best;
             }
@@ -47,55 +70,142 @@ public class DriverNegotiation extends FSMBehaviour {
             @Override
             public void onSuccess(Offer offer){
                 ((DriverAgent) myAgent).changePickPoint((String)getDataStore().get("currently_considering"));
-                ((Logger) getDataStore().get("logger")).info("offer " + offer);
-                getDataStore().put("supply_chain", offer.supply_chain);
+                ArrayList<String> chain = (ArrayList<String>) getDataStore().get("supply_chain");
+                chain.clear();
+                for(String supplier : offer.supply_chain){
+                    chain.add(supplier);
+                }
+                ((Logger)getDataStore().get("logger")).info("supply_chain " + chain.toString());
+                //getDataStore().put("supply_chain", offer.supply_chain);
                 getDataStore().put("found_mediator", true);
-                Behaviour inform = new InformClients(myAgent);
-                inform.setDataStore(getDataStore());
-                myAgent.addBehaviour(inform);
+            }
+        };
+        RoutePing        ping = new RoutePing(myAgent);
+        InformClients    inform = new InformClients(myAgent);
+        OneShotBehaviour advanceTimer = new OneShotBehaviour(myAgent){
+            @Override
+            public void action(){
+                DataStore ds = getDataStore();
+                int timer = (int) ds.get("timer");
+                ds.put("timer", timer + 1);
+                ((Logger)getDataStore().get("logger")).info("timer is now " + (timer + 1));
+            }
+        };
+        OneShotBehaviour resetTimer = new OneShotBehaviour(myAgent){
+            @Override
+            public void action(){
+                ((Logger)getDataStore().get("logger")).info("resetting timer");
+                getDataStore().put("timer", 0);
+            }
+        };
+        OneShotBehaviour sendNext = new OneShotBehaviour(myAgent){
+            private int result = FSM.SUCCESS;
+            @Override
+            public void action(){
+                DataStore ds = getDataStore();
+                int timer = (int) ds.get("timer");
+                int num = (int) ds.get("total_drivers");
+                int cur = Integer.parseInt(myAgent.getAID().getLocalName().substring(6));
+                int next = cur % num + 1;
+                AID target = new AID("Driver" + next, false);
+                ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                msg.setReplyWith("your-turn");
+                msg.addReceiver(target);
+                msg.setContent("" + timer);
+                myAgent.send(msg);
+                ((Logger)getDataStore().get("logger")).info("passing turn to " + target.getLocalName());
+                if(timer > 50)
+                    result = FSM.FAILURE;
+            }
+            @Override
+            public int onEnd(){
+                return result;
+            }
+        };
+        OneShotBehaviour lowerExp = new OneShotBehaviour(myAgent){
+            @Override
+            public void action(){
+                DataStore ds = getDataStore();
+                ((Logger) getDataStore().get("logger")).info("UPPING THE PRICE");
+                //double price = Math.min((double) ds.get("acceptable_price") + 100, (double) ds.get("money"));
+                double price = ((double) ds.get("acceptable_price")) + 100;
+                ds.put("acceptable_price", price);
             }
         };
         OneShotBehaviour removeBest = new OneShotBehaviour(myAgent){
             @Override
             public void action(){
+                ((Logger)getDataStore().get("logger")).info("removing best");
                 HashMap<String, Double> points = (HashMap<String, Double>) getDataStore().get("promising_points");
                 String best = (String) getDataStore().get("currently_considering");
                 points.remove(best);
             }
         };
-        Behaviour        quit      = new FSM.Quit();
-        LowerExpectations lower_expectations = new LowerExpectations(myAgent);
+        Behaviour quit = new FSM.Quit();
 
+        waitTurn.setDataStore(getDataStore());
+        ping.setDataStore(getDataStore());
+        inform.setDataStore(getDataStore());
+        advanceTimer.setDataStore(getDataStore());
+        resetTimer.setDataStore(getDataStore());
+        sendNext.setDataStore(getDataStore());
+        lowerExp.setDataStore(getDataStore());
+        removeBest.setDataStore(getDataStore());
         broadcast.setDataStore(getDataStore());
         gather.setDataStore(getDataStore());
         accept.setDataStore(getDataStore());
-        wait.setDataStore(getDataStore());
-        removeBest.setDataStore(getDataStore());
         quit.setDataStore(getDataStore());
-        lower_expectations.setDataStore(getDataStore());
 
-        registerFirstState(wait, "wait");
-        registerState(broadcast, "broadcast");
+        if(myAgent.getAID().getLocalName().equals("Driver1")){
+            registerFirstState(broadcast, "broadcast");
+            registerState(waitTurn, "wait");
+        } else {
+            registerFirstState(waitTurn, "wait");
+            registerState(broadcast, "broadcast");
+        }
         registerState(gather, "gather");
         registerState(accept, "accept");
         registerState(removeBest, "remove_best");
-        registerState(lower_expectations, "lower_expectations");
+        registerState(ping, "ping");
+        registerState(inform, "inform");
+        registerState(sendNext, "send_next");
+        registerState(advanceTimer, "advance_timer");
+        registerState(resetTimer, "reset_timer");
+        registerState(lowerExp, "lower_expectations");
         registerLastState(quit, "quit");
 
-        registerDefaultTransition("wait", "broadcast");
+
 
         registerTransition("broadcast", "gather",  FSM.SUCCESS);
-        registerTransition("broadcast", "wait", FSM.FAILURE);
+        registerTransition("broadcast", "advance_timer", FSM.FAILURE);
 
         registerTransition("gather", "accept", FSM.SUCCESS);
         registerTransition("gather", "lower_expectations", FSM.FAILURE);
         registerTransition("gather", "remove_best", 3);
 
-        registerTransition("accept", "quit", FSM.SUCCESS);
+        registerTransition("accept", "ping", FSM.SUCCESS);
         registerTransition("accept", "lower_expectations", FSM.FAILURE);
 
+        registerTransition("send_next", "wait", FSM.SUCCESS);
+        registerTransition("send_next", "quit", FSM.FAILURE);
 
-        registerDefaultTransition("remove_best", "wait");
-        registerDefaultTransition("lower_expectations", "wait");
+        registerTransition("wait", "broadcast", FSM.SUCCESS);
+        registerTransition("wait", "advance_timer", FSM.FAILURE);
+
+        registerDefaultTransition("lower_expectations", "reset_timer");
+        registerDefaultTransition("ping", "inform");
+        registerDefaultTransition("inform", "reset_timer");
+        registerDefaultTransition("remove_best", "advance_timer");
+        registerDefaultTransition("advance_timer", "send_next");
+        registerDefaultTransition("reset_timer", "send_next");
+
+    }
+
+    @Override
+    public int onEnd(){
+        ((Logger)getDataStore().get("logger")).info(((ArrayList<String>)getDataStore().get("supply_chain")).toString());
+        ((DriverAgent)myAgent).printWay();
+        ((DriverAgent)myAgent).reportDeviation();
+        return 0;
     }
 }

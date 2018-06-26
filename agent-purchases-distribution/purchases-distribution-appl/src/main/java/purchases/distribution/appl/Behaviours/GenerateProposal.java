@@ -39,7 +39,10 @@ public class GenerateProposal extends CyclicBehaviour {
         ACLMessage msg = myAgent.receive(template);
         if(msg != null){
             ACLMessage reply = msg.createReply();
+            ((Logger) getDataStore().get("logger")).info("got cfp from " + msg.getSender().getLocalName());
+            ((Logger) getDataStore().get("logger")).info("supply chain is:\n" + chain.toString());
             if(chain.contains(msg.getSender().getLocalName())){
+                ((Logger) getDataStore().get("logger")).info("refusing");
                 reply.setPerformative(ACLMessage.REFUSE);
                 reply.setContent("");
                 myAgent.send(reply);

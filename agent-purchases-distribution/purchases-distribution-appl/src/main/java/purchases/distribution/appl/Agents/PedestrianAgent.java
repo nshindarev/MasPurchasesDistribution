@@ -1,6 +1,6 @@
 package purchases.distribution.appl.Agents;
 
-import jade.core.Agent;
+import jade.core.*;
 import jade.core.behaviours.*;
 import jade.lang.acl.*;
 import purchases.distribution.appl.Behaviours.*;
@@ -24,6 +24,10 @@ class PedestrianBehaviour extends FSMBehaviour {
             @Override
             public void onSuccess(Offer offer){
                 logger.info("DONE");
+                ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                msg.setReplyWith("im-done");
+                msg.addReceiver(new AID("god", false));
+                myAgent.send(msg);
                 myAgent.doDelete();
             }
         };

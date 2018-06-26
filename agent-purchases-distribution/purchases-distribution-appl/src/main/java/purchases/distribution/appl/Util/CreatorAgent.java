@@ -2,12 +2,14 @@ package purchases.distribution.appl.Util;
 
 import java.io.*;
 import jade.core.Agent;
+import jade.lang.acl.*;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.file.Paths;
+import purchases.distribution.appl.Behaviours.*;
 
 public class CreatorAgent extends Agent {
 
@@ -44,8 +46,45 @@ public class CreatorAgent extends Agent {
         } catch(IOException ex){
             logger.error("some error");
         }
-        Object[] arg = new Object[1];
-        arg[0] = drivers;
-        createAgent("collector", "purchases.distribution.appl.Agents.StatCollector", arg);
+        final int driver_num = drivers;
+        addBehaviour(new Collector(this, drivers, "deviation"){
+            private double total = 0;
+
+            @Override
+            public void handle(ACLMessage msg){
+                total += Double.parseDouble(msg.getContent());
+            }
+
+            @Override
+            public int onEnd(){
+                logger.info("Total deviation: " + total);
+                return 0;
+            }
+        });
+        addBehaviour(new Collector(this, pedestrians, "im-done"){
+            @Override
+            public int onEnd(){
+                myAgent.addBehaviour(new Broadcast(myAgent, ACLMessage.INFORM, "phase-two"){
+                    @Override
+                    public String getContent(){ return String.valueOf(driver_num); }
+                });
+                return 0;
+            }
+        });
+        addBehaviour(new Collector(this, drivers, "pedestrian-deviation"){
+            private double total = 0;
+
+            @Override
+            public void handle(ACLMessage msg){
+                total += Double.parseDouble(msg.getContent());
+            }
+
+            @Override
+            public int onEnd(){
+                logger.info("Total 'pedestrian' deviation: " + total);
+                return 0;
+            }
+        });
+
     }
 }

@@ -18,7 +18,6 @@ public class AcceptProposal extends Behaviour {
     private boolean success = false;
     private boolean receiving = false;
     private ArrayList<Offer> offers;
-    private Offer finalOffer = null;
 
     private final MessageTemplate template;
 
@@ -50,6 +49,7 @@ public class AcceptProposal extends Behaviour {
         offers = (ArrayList<Offer>) getDataStore().get("acceptable_offers");
         offers.sort((Offer a, Offer b) -> a.price < b.price ? -1 : 1);
         removeUnacceptable();
+        allDone = success = false;
     }
 
     @Override
@@ -69,6 +69,7 @@ public class AcceptProposal extends Behaviour {
 
     @Override
     public void action(){
+        if(allDone) return;
         ACLMessage msg;
         removeUnacceptable();
         if(offers.isEmpty() || current_index >= offers.size()){
@@ -78,6 +79,7 @@ public class AcceptProposal extends Behaviour {
             return;
         }
         Offer offer = offers.get(current_index);
+        success = false;
         switch(state){
         case 0: // отправить ACCEPT_PROPOSAL лучшему предложению
             getDataStore().put("currently_agreeing", true);
@@ -100,7 +102,6 @@ public class AcceptProposal extends Behaviour {
                 receiving = false;
                 if(msg.getPerformative() == ACLMessage.AGREE){
                     state = 2;
-                    finalOffer = offers.get(current_index);
                 } else {
                     if(msg.getContent().length() == 0){
                         offers.remove(current_index);
@@ -132,6 +133,7 @@ public class AcceptProposal extends Behaviour {
                 myAgent.send(msg);
             }
             allDone = success = true;
+            state = 0;
         }
     }
 }

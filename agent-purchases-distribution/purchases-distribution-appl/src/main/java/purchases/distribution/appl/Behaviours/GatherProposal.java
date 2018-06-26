@@ -1,7 +1,7 @@
 package purchases.distribution.appl.Behaviours;
 
 import java.util.*;
-import jade.core.Agent;
+import jade.core.*;
 import jade.core.behaviours.*;
 import jade.lang.acl.*;
 import org.slf4j.Logger;
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import purchases.distribution.appl.Util.Offer;
 
 public class GatherProposal extends ParallelBehaviour {
-    public static final long TIMEOUT = 1000;
+    public static final long TIMEOUT = 10000;
     private ReceiverBehaviour.Handle[] handles;
     private Logger logger;
 
@@ -30,6 +30,8 @@ public class GatherProposal extends ParallelBehaviour {
 
     @Override
     public void onStart(){
+        if(!getDataStore().containsKey("supply_chain"))
+            getDataStore().put("supply_chain", new ArrayList<String>());
         ArrayList<String> ids = (ArrayList<String>) getDataStore().get("possible_partners");
         logger = (Logger) getDataStore().get("logger");
         logger.info("gathering offers");
@@ -53,17 +55,28 @@ public class GatherProposal extends ParallelBehaviour {
         logger.info("got some offers");
         logger.info("acceptable price: " + acceptable_price);
         boolean hadOffers = false;
+        ArrayList<String> chain = (ArrayList<String>) getDataStore().get("supply_chain");
         for(ReceiverBehaviour.Handle h : handles){
             try {
                 ACLMessage msg = h.getMessage();
                 if(msg.getPerformative() == ACLMessage.REFUSE) continue;
+                if(chain.contains(msg.getSender().getLocalName())){
+                    ACLMessage reply = msg.createReply();
+                    msg.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                    myAgent.send(reply);
+                }
                 hadOffers = true;
                 String[] contentParts = msg.getContent().split("\\R", 2);
                 double price = Double.parseDouble(contentParts[0]);
                 logger.info("offer: " + price);
+                logger.info("offer[1]: " + contentParts[1]);
+                ArrayList<String> suppliers = new ArrayList<String>(Arrays.asList(contentParts[1].split("\\R")));
+                logger.info("offer[2]: " + suppliers.toString());
 
+                AID sender = msg.getSender();
+                String convId = msg.getConversationId();
                 if(price <= acceptable_price){
-                    offers.add(new Offer(msg.getSender(), price, msg.getConversationId(), new ArrayList<String>(Arrays.asList(contentParts[1].split("\\R")))));
+                    offers.add(new Offer(sender, price, convId, suppliers));
                 } else {
                     ACLMessage reply = msg.createReply();
                     msg.setPerformative(ACLMessage.REJECT_PROPOSAL);

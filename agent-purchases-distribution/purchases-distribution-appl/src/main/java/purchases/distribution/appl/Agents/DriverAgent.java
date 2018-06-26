@@ -40,29 +40,6 @@ class TimeLimit extends WakerBehaviour {
     }
 }
 
-class RoutePing extends TickerBehaviour {
-    private String prev = null;
-
-    public RoutePing(Agent agent, long period){
-        super(agent, period);
-    }
-
-    @Override
-    public void onTick(){
-        Broadcast broadcast_route = new Broadcast(myAgent, ACLMessage.INFORM, "my-route"){
-            @Override
-            public String getContent(){
-                String current = ((DriverAgent)myAgent).getRoute().toString();
-                if(prev != null && current.toString().equals(prev)) return null;
-                prev = current;
-                ((Logger)getDataStore().get("logger")).info("PING");
-                return current;
-            }
-        };
-        broadcast_route.setDataStore(getDataStore());
-        myAgent.addBehaviour(broadcast_route);
-    }
-}
 
 class UpdateChain extends CyclicBehaviour {
     private static final MessageTemplate template =
@@ -83,10 +60,94 @@ class UpdateChain extends CyclicBehaviour {
             for(String supplier : msg.getContent().split("\\R"))
                 if(!chain.contains(supplier)) chain.add(supplier);
             ((Logger) getDataStore().get("logger")).info("current_chain " + chain.toString());
+            SequentialBehaviour notify_clients = new SequentialBehaviour(myAgent);
+
             Behaviour inform = new InformClients(myAgent);
             inform.setDataStore(getDataStore());
-            myAgent.addBehaviour(inform);
+
+            final ACLMessage reply = msg.createReply();
+            reply.setPerformative(ACLMessage.INFORM);
+            reply.setReplyWith("ack");
+
+            Behaviour send_ack = new OneShotBehaviour(myAgent){
+                @Override
+                public void action(){
+                    myAgent.send(reply);
+                }
+            };
+
+            notify_clients.addSubBehaviour(inform);
+            notify_clients.addSubBehaviour(send_ack);
+            myAgent.addBehaviour(notify_clients);
         } else block();
+    }
+}
+
+class PhaseTwo extends SequentialBehaviour {
+    private static final MessageTemplate template =
+        MessageTemplate.and(
+            MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+            MessageTemplate.and(
+                MessageTemplate.MatchSender(new AID("god", false)),
+                MessageTemplate.MatchReplyWith("phase-two")
+            )
+        );
+
+    public PhaseTwo(Agent agent){
+        super(agent);
+    }
+
+    @Override
+    public void onStart(){
+        DataStore ds = getDataStore();
+        Behaviour wait = new Behaviour(myAgent){
+            private boolean over = false;
+            @Override
+            public void action(){
+                ACLMessage msg = myAgent.receive(template);
+                if(msg != null){
+                    over = true;
+                    ((Logger) getDataStore().get("logger")).info("total_drivers: " + Integer.parseInt(msg.getContent()));
+                    getDataStore().put("total_drivers", Integer.parseInt(msg.getContent()));
+                } else block();
+            }
+            @Override
+            public boolean done(){
+                return over;
+            }
+        };
+        Behaviour addBehaviours = new OneShotBehaviour(myAgent){
+            @Override
+            public void action(){
+                ((DriverAgent) myAgent).printWay();
+                ((DriverAgent) myAgent).reportPDeviation();
+
+                RouteAnalyzer    analyze = new RouteAnalyzer(myAgent);
+                UpdateChain      update  = new UpdateChain(myAgent);
+                RoutePing        ping = new RoutePing(myAgent);
+                DriverNegotiation negotiation = new DriverNegotiation(myAgent);
+                SequentialBehaviour seq = new SequentialBehaviour(myAgent);
+
+                analyze.setDataStore(getDataStore());
+                update.setDataStore(getDataStore());
+                ping.setDataStore(getDataStore());
+                negotiation.setDataStore(getDataStore());
+
+
+                seq.addSubBehaviour(ping);
+                seq.addSubBehaviour(negotiation);
+
+                myAgent.addBehaviour(analyze);
+                myAgent.addBehaviour(update);
+                myAgent.addBehaviour(seq);
+            }
+        };
+
+        wait.setDataStore(getDataStore());
+        addBehaviours.setDataStore(getDataStore());
+
+        addSubBehaviour(wait);
+        addSubBehaviour(addBehaviours);
     }
 }
 
@@ -97,43 +158,23 @@ class DriverBehaviour extends OneShotBehaviour {
         getDataStore().put("money", 0.0);
         getDataStore().put("promising_points", new HashMap<String, Double>());
         getDataStore().put("acceptable_price", 50.0);
+        getDataStore().put("supply_chain", new ArrayList<String>());
     }
 
     @Override
     public void action(){
         GenerateProposal genprop = new GenerateProposal(myAgent, "request-drop");
         CollectResponses collect = new CollectResponses(myAgent, "request-drop");
-        RouteAnalyzer    analyze = new RouteAnalyzer(myAgent);
-        UpdateChain      update  = new UpdateChain(myAgent);
-        DriverNegotiation negotiation = new DriverNegotiation(myAgent);
-        RoutePing broadcast_route = new RoutePing(myAgent, 2000);
-        TimeLimit limit = new TimeLimit(myAgent, 30000);
-        TickerBehaviour ticker = new TickerBehaviour(myAgent, 1000){
-            @Override
-            public void onTick(){
-                Behaviour inform = new InformClients(myAgent);
-                inform.setDataStore(getDataStore());
-                myAgent.addBehaviour(inform);
-            }
-        };
+        PhaseTwo         phase   = new PhaseTwo(myAgent);
+
 
         genprop.setDataStore(getDataStore());
         collect.setDataStore(getDataStore());
-        analyze.setDataStore(getDataStore());
-        update.setDataStore(getDataStore());
-        negotiation.setDataStore(getDataStore());
-        broadcast_route.setDataStore(getDataStore());
-        limit.setDataStore(getDataStore());
-        ticker.setDataStore(getDataStore());
+        phase.setDataStore(getDataStore());
 
         myAgent.addBehaviour(genprop);
         myAgent.addBehaviour(collect);
-        myAgent.addBehaviour(analyze);
-        myAgent.addBehaviour(update);
-        myAgent.addBehaviour(negotiation);
-        myAgent.addBehaviour(broadcast_route);
-        myAgent.addBehaviour(limit);
-        //myAgent.addBehaviour(ticker);
+        myAgent.addBehaviour(phase);
     }
 };
 
@@ -158,6 +199,7 @@ public class DriverAgent extends Agent {
     private Route route;
     private double init_length = 0;
     private double ware_length = 0;
+    private double pedestrian_length = 0;
 
     @Override
     public void setup() {
@@ -196,14 +238,22 @@ public class DriverAgent extends Agent {
     }
 
     public void printWay(){
-        logger.info(route.toString() + ' ' + route.length() + ' ' + ware_length + ' ' + init_length);
+        logger.info(route.toString() + ' ' + route.length() + ' ' + pedestrian_length + ' ' + ware_length + ' ' + init_length);
     }
 
     public void reportDeviation(){
         ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
         msg.setReplyWith("deviation");
-        msg.addReceiver(new AID("collector", false));
-        msg.setContent("" + (route.length() - init_length));
+        msg.addReceiver(new AID("god", false));
+        msg.setContent("" + (route.length() - pedestrian_length));
+        send(msg);
+    }
+    public void reportPDeviation(){
+        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+        msg.setReplyWith("pedestrian-deviation");
+        msg.addReceiver(new AID("god", false));
+        pedestrian_length = route.length();
+        msg.setContent("" + pedestrian_length);
         send(msg);
     }
 

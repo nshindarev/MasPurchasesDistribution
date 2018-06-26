@@ -70,13 +70,14 @@ public class CollectResponses extends CyclicBehaviour {
                         memory.remove(request.partner);
                         driver.addImportantPoint(request.address);
                         reply.setPerformative(ACLMessage.AGREE);
-                        clients.add(request.partner);
+                        if(request.partner.getLocalName().substring(0, 6).equals("Driver"))
+                            clients.add(request.partner);
                     } else {
                         reply.setPerformative(ACLMessage.REFUSE);
                         reply.setContent(String.valueOf(price));
                     }
                 } else {
-                    reply.setPerformative(ACLMessage.CANCEL);
+                    reply.setPerformative(ACLMessage.REFUSE);
                 }
                 myAgent.send(reply);
             } else {

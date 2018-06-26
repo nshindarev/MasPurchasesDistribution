@@ -35,6 +35,11 @@ public class RouteAnalyzer extends CyclicBehaviour {
     public void action(){
         ACLMessage msg = myAgent.receive(template);
         if(msg != null){
+            ACLMessage reply = msg.createReply();
+            reply.setPerformative(ACLMessage.INFORM);
+            reply.setReplyWith("ack");
+            myAgent.send(reply);
+
             if(getDataStore().containsKey("found_mediator")) return;
             if(chain.contains(msg.getSender().getLocalName())) return;
             Route route = ((DriverAgent)myAgent).getRoute();

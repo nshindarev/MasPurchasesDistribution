@@ -14,6 +14,6 @@ public class Offer {
         this.price = price;
         this.convId  = convId;
         this.supply_chain = supply_chain;
-        System.out.println("offer: " + supply_chain.toString());
+        //System.out.println("offer: " + supply_chain.toString());
     }
 }
